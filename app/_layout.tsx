@@ -1,32 +1,95 @@
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
-import { Stack } from "expo-router";
+import { DarkTheme, ThemeProvider } from "@react-navigation/native";
+import { Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import React from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import "react-native-reanimated";
 import "../global.css";
-
-import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export const unstable_settings = {
   anchor: "(tabs)",
 };
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+function RouteLoadingOverlay() {
+  const pathname = usePathname();
+  const [isVisible, setIsVisible] = React.useState(false);
+  const previousPath = React.useRef(pathname);
+
+  React.useEffect(() => {
+    if (previousPath.current !== pathname) {
+      setIsVisible(true);
+      previousPath.current = pathname;
+
+      const timeout = setTimeout(() => {
+        setIsVisible(false);
+      }, 220);
+
+      return () => clearTimeout(timeout);
+    }
+
+    return undefined;
+  }, [pathname]);
+
+  if (!isVisible) {
+    return null;
+  }
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="modal"
-          options={{ presentation: "modal", title: "Modal" }}
-        />
-      </Stack>
-      <StatusBar style="auto" />
+    <View pointerEvents="none" style={styles.loadingOverlay}>
+      <ActivityIndicator size="small" color="#a5b4fc" />
+      <Text style={styles.loadingText}>Loading</Text>
+    </View>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider value={DarkTheme}>
+      <View style={styles.container}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: "fade",
+            contentStyle: styles.screenContent,
+          }}
+        >
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="chat" />
+          <Stack.Screen name="property/[id]" />
+          <Stack.Screen
+            name="modal"
+            options={{
+              presentation: "modal",
+              title: "Modal",
+              contentStyle: styles.screenContent,
+            }}
+          />
+        </Stack>
+        <RouteLoadingOverlay />
+        <StatusBar style="light" backgroundColor="#09090b" />
+      </View>
     </ThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#09090b",
+  },
+  screenContent: {
+    backgroundColor: "#09090b",
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(9, 9, 11, 0.96)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    color: "#a1a1aa",
+    fontSize: 12,
+    letterSpacing: 0.4,
+  },
+});

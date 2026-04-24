@@ -1,98 +1,174 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useRouter } from "expo-router";
+import { BedDouble, Bot, Search, SlidersHorizontal } from "lucide-react-native";
+import React from "react";
+import {
+    FlatList,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+} from "react-native";
+import MapView, { Marker } from "react-native-maps";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const listings = [
+  {
+    id: "batstate-hub",
+    title: "BatState Hub Dorm",
+    price: "₱4.5k",
+    latitude: 13.76,
+    longitude: 121.055,
+    meta: "1 BR · 12 min to BSU",
+  },
+  {
+    id: "alangilan-suites",
+    title: "Alangilan Student Suites",
+    price: "₱5.0k",
+    latitude: 13.75,
+    longitude: 121.06,
+    meta: "Studio · near transport",
+  },
+];
 
-export default function HomeScreen() {
+export default function DiscoveryScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const tabInset = Math.max(insets.bottom, Platform.OS === "android" ? 10 : 12);
+  const overlayBottom = 58 + tabInset * 2 + 12;
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View className="flex-1 bg-[#09090b]">
+      <MapView
+        style={StyleSheet.absoluteFillObject}
+        mapType="standard"
+        userInterfaceStyle="dark"
+        customMapStyle={darkMapStyle}
+        initialRegion={{
+          latitude: 13.7565,
+          longitude: 121.0583,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        }}
+      >
+        {listings.map((listing) => (
+          <Marker
+            key={listing.id}
+            coordinate={{
+              latitude: listing.latitude,
+              longitude: listing.longitude,
+            }}
+          >
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/property/[id]",
+                  params: { id: listing.id },
+                })
+              }
+            >
+              <View className="bg-zinc-950 border border-zinc-700 px-3 py-1.5 rounded-full shadow-md">
+                <Text className="text-zinc-100 font-bold text-sm tracking-tight">
+                  {listing.price}
+                </Text>
+              </View>
+            </Pressable>
+          </Marker>
+        ))}
+      </MapView>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <View className="absolute w-full px-4" style={{ top: insets.top + 16 }}>
+        <View className="flex-row items-center bg-[#09090b]/85 border border-zinc-800 rounded-full px-4 py-3.5 shadow-lg overflow-hidden">
+          <Search color="#a1a1aa" size={20} />
+          <TextInput
+            placeholder="Near Batangas State U, under 4k"
+            placeholderTextColor="#71717a"
+            className="flex-1 text-zinc-100 ml-3 text-base leading-tight font-medium"
+          />
+          <Pressable className="bg-zinc-800 p-2 rounded-full ml-2">
+            <SlidersHorizontal color="#e4e4e7" size={16} />
+          </Pressable>
+        </View>
+      </View>
+
+      <View
+        className="absolute left-0 right-0"
+        style={{ bottom: overlayBottom }}
+      >
+        <Text className="text-zinc-100 text-sm font-semibold px-4 mb-3 tracking-wide">
+          Budget picks near Batangas State U
+        </Text>
+        <FlatList
+          data={listings}
+          horizontal
+          keyExtractor={(item) => item.id}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/property/[id]",
+                  params: { id: item.id },
+                })
+              }
+              className="w-64 bg-zinc-950 border border-zinc-800 rounded-2xl p-4 mr-3"
+            >
+              <View className="flex-row items-center justify-between">
+                <Text className="text-zinc-100 text-lg font-bold">
+                  {item.price}
+                </Text>
+                <View className="flex-row items-center">
+                  <BedDouble size={16} color="#a1a1aa" />
+                  <Text className="text-zinc-400 text-xs ml-1">
+                    student-ready
+                  </Text>
+                </View>
+              </View>
+              <Text className="text-zinc-200 mt-2 font-semibold">
+                {item.title}
+              </Text>
+              <Text className="text-zinc-400 text-xs mt-1">{item.meta}</Text>
+            </Pressable>
+          )}
+        />
+      </View>
+
+      <View className="absolute right-5" style={{ bottom: overlayBottom }}>
+        <Pressable
+          onPress={() => router.push("/chat")}
+          className="bg-indigo-600 w-16 h-16 rounded-full items-center justify-center shadow-xl border border-indigo-500/50"
+        >
+          <Bot color="#fff" size={28} />
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+const darkMapStyle = [
+  { elementType: "geometry", stylers: [{ color: "#09090b" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#a1a1aa" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#18181b" }] },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d4d4d8" }],
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#18181b" }],
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#27272a" }],
   },
-});
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#000000" }],
+  },
+];
