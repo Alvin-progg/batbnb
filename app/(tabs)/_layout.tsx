@@ -10,7 +10,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(
     insets.bottom,
-    Platform.OS === "android" ? 10 : 12,
+    Platform.OS === "android" ? 8 : 12,
   );
 
   return (
@@ -29,11 +29,11 @@ export default function TabLayout() {
           borderTopWidth: 1,
           borderTopColor: "#27272a", // zinc-800
           position: "absolute",
-          bottom: bottomInset,
+          bottom: 0,
           left: 12,
           right: 12,
           elevation: 0,
-          height: 58 + bottomInset,
+          height: 56 + bottomInset,
           paddingBottom: bottomInset,
           paddingTop: 8,
           borderRadius: 18,

@@ -2,13 +2,13 @@ import { useRouter } from "expo-router";
 import { BedDouble, Bot, Search, SlidersHorizontal } from "lucide-react-native";
 import React from "react";
 import {
-    FlatList,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  FlatList,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,8 +35,8 @@ const listings = [
 export default function DiscoveryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const tabInset = Math.max(insets.bottom, Platform.OS === "android" ? 10 : 12);
-  const overlayBottom = 58 + tabInset * 2 + 12;
+  const tabInset = Math.max(insets.bottom, Platform.OS === "android" ? 8 : 12);
+  const overlayBottom = 56 + tabInset + 12;
 
   return (
     <View className="flex-1 bg-[#09090b]">
