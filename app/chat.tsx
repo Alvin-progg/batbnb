@@ -1,10 +1,16 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, SendHorizontal, Sparkles } from "lucide-react-native";
 import React from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
-
+import {
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
+} from "react-native";
 type ChatRole = "bot" | "user";
-
 type ChatMessage = {
   id: number;
   role: ChatRole;
@@ -51,26 +57,29 @@ export default function ChatScreen() {
 
   const sendMessage = React.useCallback((rawText: string) => {
     const text = rawText.trim();
-    if (!text) {
-      return;
-    }
-
+    if (!text) return;
     setMessages((current) => [
       ...current,
       { id: Date.now(), role: "user", text },
       {
         id: Date.now() + 1,
         role: "bot",
-        text: "UI-only preview: this is where Gemini results will stream with matching listings.",
+        text: "UI-only preview: this is where Gemini results will stream.",
       },
     ]);
     setDraft("");
   }, []);
 
   return (
-    <View className="flex-1 bg-[#09090b]">
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: "#09090b" }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      // If your tab bar is absolutely positioned, add its height here:
+      // keyboardVerticalOffset={56}
+    >
       <Stack.Screen options={{ headerShown: false }} />
 
+      {/* Header — unchanged */}
       <View className="pt-14 px-5 pb-4 border-b border-zinc-800 flex-row items-center justify-between">
         <View className="flex-row items-center">
           <Pressable
@@ -94,9 +103,10 @@ export default function ChatScreen() {
         </View>
       </View>
 
+      {/* Messages */}
       <ScrollView
         className="flex-1 px-5"
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 170 }}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: 16 }}
       >
         {messages.map((message) => (
           <View
@@ -118,7 +128,8 @@ export default function ChatScreen() {
         ))}
       </ScrollView>
 
-      <View className="absolute left-0 right-0 bottom-0 bg-[#09090b] border-t border-zinc-800 px-4 pt-3 pb-6">
+      {/* ✅ Input bar — NO longer absolute */}
+      <View className="bg-[#09090b] mb-5 border-t border-zinc-800 px-4 pt-3 pb-6">
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {QUICK_REPLIES.map((reply) => (
             <Pressable
@@ -149,6 +160,6 @@ export default function ChatScreen() {
           </Pressable>
         </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
