@@ -25,6 +25,38 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## Supabase backend setup
+
+1. Install dependencies
+
+   ```bash
+   npm install
+   ```
+
+2. Create your local env file
+
+   ```bash
+   copy .env.example .env
+   ```
+
+3. Add your Supabase values to `.env`
+   - `EXPO_PUBLIC_SUPABASE_URL`
+   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+
+4. In Supabase SQL Editor, run these files in order:
+   - `supabase/schema.sql`
+   - `supabase/seed.sql`
+
+   For an already initialized DB that only needs login throttling:
+   - `supabase/auth-rate-limit.sql`
+
+5. Use the configured client from `lib/supabase.ts` in your app code.
+
+This project uses Supabase Auth for login/signup and includes a SQL-backed limiter
+of 5 failed login attempts per email per 60 seconds.
+
+For more details, see `supabase/README.md`.
+
 ## Get a fresh project
 
 When you're ready, run:

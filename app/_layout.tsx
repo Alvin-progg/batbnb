@@ -1,9 +1,12 @@
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
-import { Stack, usePathname } from "expo-router";
+import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import "react-native-reanimated";
+
+import { AuthProvider, useAuth } from "@/providers/auth-provider";
+
 import "../global.css";
 
 export const unstable_settings = {
@@ -42,33 +45,71 @@ function RouteLoadingOverlay() {
   );
 }
 
+function AuthGate() {
+  const { isLoading, session } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
+
+  React.useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    const inAuthGroup = segments[0] === "(auth)";
+
+    if (!session && !inAuthGroup) {
+      router.replace("/(auth)/login");
+      return;
+    }
+
+    if (session && inAuthGroup) {
+      router.replace("/");
+    }
+  }, [isLoading, router, segments, session]);
+
+  if (!isLoading) {
+    return null;
+  }
+
+  return (
+    <View pointerEvents="none" style={styles.loadingOverlay}>
+      <ActivityIndicator size="small" color="#a5b4fc" />
+      <Text style={styles.loadingText}>Checking session</Text>
+    </View>
+  );
+}
+
 export default function RootLayout() {
   return (
-    <ThemeProvider value={DarkTheme}>
-      <View style={styles.container}>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            animation: "fade",
-            contentStyle: styles.screenContent,
-          }}
-        >
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="chat" />
-          <Stack.Screen name="property/[id]" />
-          <Stack.Screen
-            name="modal"
-            options={{
-              presentation: "modal",
-              title: "Modal",
+    <AuthProvider>
+      <ThemeProvider value={DarkTheme}>
+        <View style={styles.container}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: "fade",
               contentStyle: styles.screenContent,
             }}
-          />
-        </Stack>
-        <RouteLoadingOverlay />
-        <StatusBar style="light" backgroundColor="#09090b" />
-      </View>
-    </ThemeProvider>
+          >
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="chat" />
+            <Stack.Screen name="property/[id]" />
+            <Stack.Screen
+              name="modal"
+              options={{
+                presentation: "modal",
+                title: "Modal",
+                contentStyle: styles.screenContent,
+              }}
+            />
+          </Stack>
+          <AuthGate />
+          <RouteLoadingOverlay />
+          <StatusBar style="light" backgroundColor="#09090b" />
+        </View>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 

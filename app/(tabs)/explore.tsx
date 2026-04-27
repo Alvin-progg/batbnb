@@ -1,8 +1,22 @@
 import { BookmarkCheck, MessageSquareText, Wifi } from "lucide-react-native";
 import React from "react";
-import { Text, View } from "react-native";
+import { Alert, Pressable, Text, View } from "react-native";
+
+import { useAuth } from "@/providers/auth-provider";
 
 export default function SavedScreen() {
+  const { signOut } = useAuth();
+  const [isSigningOut, setIsSigningOut] = React.useState(false);
+
+  const handleSignOut = React.useCallback(async () => {
+    setIsSigningOut(true);
+    const { error } = await signOut();
+    if (error) {
+      Alert.alert("Sign out failed", error);
+    }
+    setIsSigningOut(false);
+  }, [signOut]);
+
   return (
     <View className="flex-1 bg-[#09090b] px-5 pt-20">
       <View className="border border-zinc-800 rounded-3xl bg-zinc-950/80 p-5">
@@ -32,6 +46,18 @@ export default function SavedScreen() {
             Chat with renters when a listing opens.
           </Text>
         </View>
+
+        <Pressable
+          onPress={handleSignOut}
+          disabled={isSigningOut}
+          className={`rounded-2xl p-4 items-center ${
+            isSigningOut ? "bg-zinc-800" : "bg-zinc-700"
+          }`}
+        >
+          <Text className="text-zinc-100 text-sm font-semibold">
+            {isSigningOut ? "Signing out..." : "Sign out"}
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
