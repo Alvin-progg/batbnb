@@ -2,13 +2,13 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, SendHorizontal, Sparkles } from "lucide-react-native";
 import React from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 type ChatRole = "bot" | "user";
 type ChatMessage = {
@@ -33,7 +33,7 @@ function createInitialMessages(listing?: string): ChatMessage[] {
     {
       id: 1,
       role: "bot",
-      text: "Hi, I am BATBNB Gemini Assistant.",
+      text: "Hi, I am Donky.",
     },
     {
       id: 2,
@@ -89,9 +89,7 @@ export default function ChatScreen() {
             <ArrowLeft size={18} color="#e4e4e7" />
           </Pressable>
           <View className="ml-3">
-            <Text className="text-zinc-100 text-lg font-semibold">
-              Gemini Chat
-            </Text>
+            <Text className="text-zinc-100 text-lg font-semibold">Donky</Text>
             <Text className="text-zinc-500 text-xs">
               Search-to-Chat UI prototype
             </Text>
