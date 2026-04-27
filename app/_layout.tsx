@@ -56,13 +56,15 @@ function AuthGate() {
     }
 
     const inAuthGroup = segments[0] === "(auth)";
+    const inOAuthCallbackRoute =
+      segments[0] === "auth" && segments[1] === "callback";
 
-    if (!session && !inAuthGroup) {
+    if (!session && !inAuthGroup && !inOAuthCallbackRoute) {
       router.replace("/(auth)/login");
       return;
     }
 
-    if (session && inAuthGroup) {
+    if (session && (inAuthGroup || inOAuthCallbackRoute)) {
       router.replace("/");
     }
   }, [isLoading, router, segments, session]);
@@ -92,6 +94,7 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="(auth)" />
+            <Stack.Screen name="auth/callback" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="chat" />
             <Stack.Screen name="property/[id]" />

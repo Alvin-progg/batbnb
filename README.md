@@ -43,6 +43,15 @@ You can start developing by editing the files inside the **app** directory. This
    - `EXPO_PUBLIC_SUPABASE_URL`
    - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 
+3.1 Enable Google OAuth in Supabase
+
+- Authentication -> Providers -> Google -> Enable
+- Add your Google OAuth client ID and secret
+- In Google Cloud OAuth client, add redirect URI: https://tvllpyqsvevhkcklowpj.supabase.co/auth/v1/callback
+- Add redirect URL: `batbnb://auth/callback`
+- Set Site URL: `batbnb://auth/callback`
+- If using Expo Go, also add runtime redirect URL: `exp://.../--/auth/callback`
+
 4. In Supabase SQL Editor, run these files in order:
    - `supabase/schema.sql`
    - `supabase/seed.sql`
