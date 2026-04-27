@@ -2,24 +2,24 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import {
-  BedDouble,
-  Bot,
-  ChevronDown,
-  ChevronUp,
-  Search,
-  SlidersHorizontal,
+    BedDouble,
+    Bot,
+    ChevronDown,
+    ChevronUp,
+    Search,
+    SlidersHorizontal,
 } from "lucide-react-native";
 import React from "react";
 import {
-  Animated,
-  FlatList,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  useWindowDimensions,
+    Animated,
+    FlatList,
+    Modal,
+    Pressable,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+    useWindowDimensions,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -72,7 +72,8 @@ const formatPriceTag = (amount: number) => {
   return `₱${compact.toFixed(decimals)}k`;
 };
 
-const formatPeso = (amount: number) => `₱${new Intl.NumberFormat("en-PH").format(amount)}`;
+const formatPeso = (amount: number) =>
+  `₱${new Intl.NumberFormat("en-PH").format(amount)}`;
 
 function parseBudget(rawValue: string): number | undefined {
   const digitsOnly = rawValue.replace(/[^0-9]/g, "");
@@ -116,9 +117,11 @@ export default function DiscoveryScreen() {
         listing.title.toLowerCase().includes(normalizedSearchQuery) ||
         listing.meta.toLowerCase().includes(normalizedSearchQuery);
       const matchesMinBudget =
-        budgetFilter.min === undefined || listing.monthlyRent >= budgetFilter.min;
+        budgetFilter.min === undefined ||
+        listing.monthlyRent >= budgetFilter.min;
       const matchesMaxBudget =
-        budgetFilter.max === undefined || listing.monthlyRent <= budgetFilter.max;
+        budgetFilter.max === undefined ||
+        listing.monthlyRent <= budgetFilter.max;
 
       return matchesSearch && matchesMinBudget && matchesMaxBudget;
     });
@@ -173,7 +176,10 @@ export default function DiscoveryScreen() {
         max: budgetFilter.max,
       };
       try {
-        await AsyncStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(payload));
+        await AsyncStorage.setItem(
+          FILTERS_STORAGE_KEY,
+          JSON.stringify(payload),
+        );
       } catch {
         // Ignore storage write failures to keep UI responsive.
       }
@@ -244,7 +250,11 @@ export default function DiscoveryScreen() {
     const parsedMin = parseBudget(minBudgetInput);
     const parsedMax = parseBudget(maxBudgetInput);
 
-    if (parsedMin !== undefined && parsedMax !== undefined && parsedMin > parsedMax) {
+    if (
+      parsedMin !== undefined &&
+      parsedMax !== undefined &&
+      parsedMin > parsedMax
+    ) {
       setFilterError("Minimum budget cannot be higher than maximum budget.");
       return;
     }
@@ -320,7 +330,10 @@ export default function DiscoveryScreen() {
             placeholderTextColor="#71717a"
             className="flex-1 text-zinc-100 ml-3 text-base leading-tight font-medium"
           />
-          <Pressable onPress={openFilterModal} className="bg-zinc-800 p-2 rounded-full ml-2">
+          <Pressable
+            onPress={openFilterModal}
+            className="bg-zinc-800 p-2 rounded-full ml-2"
+          >
             <SlidersHorizontal color="#e4e4e7" size={16} />
           </Pressable>
         </View>
@@ -331,7 +344,9 @@ export default function DiscoveryScreen() {
               Budget: {filterSummary}
             </Text>
             <Pressable onPress={clearBudgetFilter}>
-              <Text className="text-indigo-300 text-xs font-semibold">Clear</Text>
+              <Text className="text-indigo-300 text-xs font-semibold">
+                Clear
+              </Text>
             </Pressable>
           </View>
         ) : null}
@@ -351,7 +366,9 @@ export default function DiscoveryScreen() {
               <Text className="text-zinc-100 text-sm font-semibold tracking-wide">
                 {headingText}
               </Text>
-              <Text className="text-zinc-400 text-xs mt-1">{drawerHelperText}</Text>
+              <Text className="text-zinc-400 text-xs mt-1">
+                {drawerHelperText}
+              </Text>
             </View>
             <View className="w-9 h-9 rounded-full border border-zinc-700 items-center justify-center">
               {isDrawerExpanded ? (
@@ -376,7 +393,10 @@ export default function DiscoveryScreen() {
               data={filteredListings}
               keyExtractor={(item) => item.id}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 12 }}
+              contentContainerStyle={{
+                paddingHorizontal: 12,
+                paddingBottom: 12,
+              }}
               renderItem={({ item }) => (
                 <Pressable
                   onPress={() =>
@@ -393,11 +413,17 @@ export default function DiscoveryScreen() {
                     </Text>
                     <View className="flex-row items-center">
                       <BedDouble size={16} color="#a1a1aa" />
-                      <Text className="text-zinc-400 text-xs ml-1">student-ready</Text>
+                      <Text className="text-zinc-400 text-xs ml-1">
+                        student-ready
+                      </Text>
                     </View>
                   </View>
-                  <Text className="text-zinc-200 mt-2 font-semibold">{item.title}</Text>
-                  <Text className="text-zinc-400 text-xs mt-1">{item.meta}</Text>
+                  <Text className="text-zinc-200 mt-2 font-semibold">
+                    {item.title}
+                  </Text>
+                  <Text className="text-zinc-400 text-xs mt-1">
+                    {item.meta}
+                  </Text>
                 </Pressable>
               )}
             />
@@ -413,7 +439,9 @@ export default function DiscoveryScreen() {
                 onPress={clearAllFilters}
                 className="mt-3 self-start rounded-full border border-zinc-700 px-4 py-2"
               >
-                <Text className="text-zinc-200 text-xs font-medium">Clear all</Text>
+                <Text className="text-zinc-200 text-xs font-medium">
+                  Clear all
+                </Text>
               </Pressable>
             </View>
           )}
@@ -437,7 +465,9 @@ export default function DiscoveryScreen() {
       >
         <View className="flex-1 justify-end bg-black/60 px-4 pb-8">
           <View className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5">
-            <Text className="text-zinc-100 text-xl font-bold">Filter apartments</Text>
+            <Text className="text-zinc-100 text-xl font-bold">
+              Filter apartments
+            </Text>
             <Text className="text-zinc-400 text-sm mt-1">
               Set your monthly budget range.
             </Text>
@@ -500,13 +530,17 @@ export default function DiscoveryScreen() {
                   onPress={() => setFilterModalVisible(false)}
                   className="rounded-full border border-zinc-700 px-4 py-2.5"
                 >
-                  <Text className="text-zinc-300 text-sm font-medium">Cancel</Text>
+                  <Text className="text-zinc-300 text-sm font-medium">
+                    Cancel
+                  </Text>
                 </Pressable>
                 <Pressable
                   onPress={applyBudgetFilter}
                   className="rounded-full bg-indigo-600 px-5 py-2.5"
                 >
-                  <Text className="text-white text-sm font-semibold">Apply</Text>
+                  <Text className="text-white text-sm font-semibold">
+                    Apply
+                  </Text>
                 </Pressable>
               </View>
             </View>
