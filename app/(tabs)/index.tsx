@@ -144,7 +144,7 @@ export default function DiscoveryScreen() {
 
       return matchesSearch && matchesMinBudget && matchesMaxBudget;
     });
-  }, [budgetFilter.max, budgetFilter.min, normalizedSearchQuery]);
+  }, [budgetFilter.max, budgetFilter.min, listings, normalizedSearchQuery]);
 
   React.useEffect(() => {
     let isMounted = true;
