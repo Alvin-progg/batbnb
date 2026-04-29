@@ -301,21 +301,29 @@ export default function DiscoveryScreen() {
               latitude: listing.latitude,
               longitude: listing.longitude,
             }}
+            onPress={() => router.push(`/property/${listing.id}` as any)}
           >
-            <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: "/property/[id]",
-                  params: { id: listing.id },
-                })
-              }
-            >
-              <View className="bg-zinc-950 border border-zinc-700 px-3 py-1.5 rounded-full shadow-md">
+            <View className="items-center">
+              <View className="bg-zinc-950 border border-zinc-700 px-3 py-1.5 rounded-xl shadow-md">
                 <Text className="text-zinc-100 font-bold text-sm tracking-tight">
                   {formatPriceTag(listing.monthlyRent)}
                 </Text>
               </View>
-            </Pressable>
+              <View
+                style={{
+                  width: 0,
+                  height: 0,
+                  backgroundColor: "transparent",
+                  borderStyle: "solid",
+                  borderLeftWidth: 6,
+                  borderRightWidth: 6,
+                  borderTopWidth: 6,
+                  borderLeftColor: "transparent",
+                  borderRightColor: "transparent",
+                  borderTopColor: "#3f3f46", // Matches border-zinc-700 to look like a connected pin
+                }}
+              />
+            </View>
           </Marker>
         ))}
       </MapView>
@@ -399,12 +407,7 @@ export default function DiscoveryScreen() {
               }}
               renderItem={({ item }) => (
                 <Pressable
-                  onPress={() =>
-                    router.push({
-                      pathname: "/property/[id]",
-                      params: { id: item.id },
-                    })
-                  }
+                  onPress={() => router.push(`/property/${item.id}` as any)}
                   className="mb-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                 >
                   <View className="flex-row items-center justify-between">
