@@ -2,22 +2,35 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, SendHorizontal, Sparkles } from "lucide-react-native";
 import React from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { generateChatResponse, getEmbedding } from "../lib/gemini";
 import { supabase } from "../lib/supabase";
 
 type ChatRole = "bot" | "user";
+
+type Listing = {
+  id: string;
+  title: string;
+  location: string;
+  monthly_rent: number;
+  status: string;
+  subtitle?: string;
+  meta?: string;
+};
+
 type ChatMessage = {
   id: number;
   role: ChatRole;
   text: string;
+  suggestedListings?: Listing[];
 };
 
 const QUICK_REPLIES = [
@@ -27,22 +40,17 @@ const QUICK_REPLIES = [
   "Show under 4,500",
 ];
 
+const UUID_REGEX =
+  /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g;
+
 function createInitialMessages(listing?: string): ChatMessage[] {
   const intro = listing
     ? `I can help with ${listing}. Ask for availability, commute time, or student reviews.`
     : "Tell me your budget and preferred area in Batangas, and I will suggest student-friendly options.";
 
   return [
-    {
-      id: 1,
-      role: "bot",
-      text: "Hi, I am Donky.",
-    },
-    {
-      id: 2,
-      role: "bot",
-      text: intro,
-    },
+    { id: 1, role: "bot", text: "Hi, I am Donky." },
+    { id: 2, role: "bot", text: intro },
   ];
 }
 
@@ -65,56 +73,88 @@ export default function ChatScreen() {
     const userMessageId = Date.now();
     const botMessageId = userMessageId + 1;
 
-    // Optimistically add user msg & bot loading state
-    setMessages((current) => [
-      ...current,
+    setMessages((prev) => [
+      ...prev,
       { id: userMessageId, role: "user", text },
       { id: botMessageId, role: "bot", text: "Thinking..." },
     ]);
     setDraft("");
 
     try {
-      // 1. Get embedding for the user's prompt
       const queryEmbedding = await getEmbedding(text);
 
-      // 2. Call the Supabase RPC to match against listings
+      // @ts-ignore – match_listings is a custom RPC not in the generated types
       const { data: closestListings, error } = await supabase.rpc(
         "match_listings",
         {
           query_embedding: queryEmbedding,
-          match_threshold: 0.7, // Adjust to how strict you want matches
-          match_count: 3, // Top 3 results
+          match_threshold: 0.1,
+          match_count: 10,
         },
       );
 
-      if (error) {
-        console.error("Match listings error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
-      // 3. Format the context for Gemini
-      let snippetText = "No direct listings found, just chat generally.";
-      let snippets: string[] = [];
-      if (closestListings && closestListings.length > 0) {
-        snippets = closestListings.map(
-          (l: any) =>
-            `${l.title} at ${l.location} for Php ${l.monthly_rent}. Extras: ${l.subtitle} ${l.meta}`,
+      const listings: Listing[] = closestListings ?? [];
+
+      const snippets: string[] = listings.map(
+        (l) =>
+          `ID: ${l.id} | Title: ${l.title} | Location: ${l.location} | Price: Php ${l.monthly_rent} | Status: ${l.status} | Extras: ${l.subtitle ?? ""} ${l.meta ?? ""}`,
+      );
+
+      const llmResponse = await generateChatResponse(text, snippets);
+      console.log("Raw LLM Response:", llmResponse);
+
+      // ✅ PRIMARY: extract UUIDs from <uuids> tag
+      const tagMatch = llmResponse.match(/<uuids>([\s\S]*?)<\/uuids>/i);
+      let recommendedIds: string[];
+
+      if (tagMatch) {
+        recommendedIds = (tagMatch[1].match(UUID_REGEX) ?? []).map((id) =>
+          id.toLowerCase(),
         );
-        snippetText = snippets.join("\n\n");
+      } else {
+        // ✅ FALLBACK: brute-force scan entire response
+        recommendedIds = (llmResponse.match(UUID_REGEX) ?? []).map((id) =>
+          id.toLowerCase(),
+        );
       }
 
-      // 4. Send to Gemini
-      const geminiResponse = await generateChatResponse(text, snippets);
+      console.log("Extracted IDs:", recommendedIds);
 
-      setMessages((current) =>
-        current.map((msg) =>
-          msg.id === botMessageId ? { ...msg, text: geminiResponse } : msg,
+      // Strip XML tags, code blocks, and stray UUIDs from display text
+      const cleanText = llmResponse
+        .replace(/<uuids>[\s\S]*?<\/uuids>/gi, "")
+        .replace(/```xml[\s\S]*?```/gi, "")
+        .replace(UUID_REGEX, "")
+        .replace(/^,\s*|,\s*$/g, "")
+        .trim();
+
+      // Match IDs → listing objects
+      let suggestedListings: Listing[] =
+        recommendedIds.length > 0
+          ? listings.filter((l) => recommendedIds.includes(l.id.toLowerCase()))
+          : [];
+
+      // Fallback: LLM gave no IDs → show top 3 from vector search
+      if (suggestedListings.length === 0 && listings.length > 0) {
+        suggestedListings = listings.slice(0, 3);
+      }
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === botMessageId
+            ? { ...msg, text: cleanText, suggestedListings }
+            : msg,
         ),
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Chat error:", err);
 
-      const errorMessage = String(err?.message || err);
+      const errorMessage = String(
+        err instanceof Error ? err.message : String(err),
+      );
+
       if (
         errorMessage.includes("503") ||
         errorMessage.includes("high demand") ||
@@ -126,12 +166,12 @@ export default function ChatScreen() {
         );
       }
 
-      setMessages((current) =>
-        current.map((msg) =>
+      setMessages((prev) =>
+        prev.map((msg) =>
           msg.id === botMessageId
             ? {
                 ...msg,
-                text: "Sorry, I ran into an error connecting to my brain. Please try again later.",
+                text: "Sorry, I ran into an error. Please try again later.",
               }
             : msg,
         ),
@@ -143,12 +183,10 @@ export default function ChatScreen() {
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: "#09090b" }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      // If your tab bar is absolutely positioned, add its height here:
-      // keyboardVerticalOffset={56}
     >
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Header — unchanged */}
+      {/* Header */}
       <View className="pt-14 px-5 pb-4 border-b border-zinc-800 flex-row items-center justify-between">
         <View className="flex-row items-center">
           <Pressable
@@ -172,30 +210,113 @@ export default function ChatScreen() {
 
       {/* Messages */}
       <ScrollView
-        className="flex-1 px-5"
+        className="flex-1 px-4"
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 16 }}
       >
         {messages.map((message) => (
-          <View
-            key={message.id}
-            className={
-              message.role === "user"
-                ? "self-end max-w-[85%] bg-indigo-600 rounded-2xl rounded-br-md px-4 py-3 mb-3"
-                : "self-start max-w-[90%] bg-zinc-900 border border-zinc-800 rounded-2xl rounded-bl-md px-4 py-3 mb-3"
-            }
-          >
-            <Text
-              className={
-                message.role === "user" ? "text-white" : "text-zinc-200"
-              }
-            >
-              {message.text}
-            </Text>
+          <View key={message.id} className="mb-4">
+            {message.role === "user" ? (
+              <View className="self-end max-w-[85%] bg-indigo-600 rounded-2xl rounded-br-md px-4 py-3">
+                <Text className="text-white">{message.text}</Text>
+              </View>
+            ) : (
+              <View className="w-full">
+                {/* Plain text bubble — only when no cards */}
+                {(message.suggestedListings == null ||
+                  message.suggestedListings.length === 0) && (
+                  <View className="max-w-[90%] bg-zinc-900 border border-zinc-800 rounded-2xl rounded-bl-md px-4 py-3">
+                    <Text className="text-zinc-200">{message.text}</Text>
+                  </View>
+                )}
+
+                {/* Short intro line above cards */}
+                {message.suggestedListings != null &&
+                  message.suggestedListings.length > 0 && (
+                    <Text className="text-zinc-400 text-xs mb-3 ml-1">
+                      {message.text !== ""
+                        ? message.text
+                        : "Here are some listings for you:"}
+                    </Text>
+                  )}
+
+                {/* Full-width stacked listing cards */}
+                {message.suggestedListings != null &&
+                  message.suggestedListings.map((l) => (
+                    <View
+                      key={l.id}
+                      className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-3"
+                    >
+                      {/* Title + Status badge */}
+                      <View className="flex-row items-start justify-between mb-1">
+                        <Text
+                          className="text-zinc-100 font-semibold text-base flex-1 mr-2"
+                          numberOfLines={2}
+                        >
+                          {l.title}
+                        </Text>
+                        <View
+                          className={
+                            l.status?.toLowerCase() === "available"
+                              ? "px-2 py-0.5 rounded-full bg-green-900/40"
+                              : "px-2 py-0.5 rounded-full bg-red-900/40"
+                          }
+                        >
+                          <Text
+                            className={
+                              l.status?.toLowerCase() === "available"
+                                ? "text-[10px] font-bold uppercase tracking-wider text-green-400"
+                                : "text-[10px] font-bold uppercase tracking-wider text-red-400"
+                            }
+                          >
+                            {l.status}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Location */}
+                      <Text
+                        className="text-zinc-500 text-xs mb-2"
+                        numberOfLines={1}
+                      >
+                        📍 {l.location}
+                      </Text>
+
+                      {/* Description */}
+                      {(l.subtitle != null || l.meta != null) && (
+                        <Text
+                          className="text-zinc-400 text-xs mb-3 leading-4"
+                          numberOfLines={2}
+                        >
+                          {l.subtitle ?? l.meta}
+                        </Text>
+                      )}
+
+                      {/* Price + CTA */}
+                      <View className="flex-row items-center justify-between mt-1">
+                        <Text className="text-indigo-400 font-bold text-base">
+                          Php {l.monthly_rent}
+                          <Text className="text-zinc-500 text-xs font-normal">
+                            /mo
+                          </Text>
+                        </Text>
+                        <Pressable
+                          onPress={() => router.push(`/property/${l.id}`)}
+                          className="bg-indigo-600 active:bg-indigo-700 px-4 py-2 rounded-xl"
+                        >
+                          <Text className="text-white text-xs font-semibold">
+                            View Listing →
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ))}
+              </View>
+            )}
           </View>
         ))}
       </ScrollView>
 
-      {/* ✅ Input bar — NO longer absolute */}
+      {/* Input area */}
       <View className="bg-[#09090b] mb-5 border-t border-zinc-800 px-4 pt-3 pb-6">
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {QUICK_REPLIES.map((reply) => (
