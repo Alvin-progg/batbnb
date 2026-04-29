@@ -1,11 +1,14 @@
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as WebBrowser from "expo-web-browser";
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import "react-native-reanimated";
 
 import { AuthProvider, useAuth } from "@/providers/auth-provider";
+
+WebBrowser.maybeCompleteAuthSession();
 
 import "../global.css";
 
@@ -65,7 +68,7 @@ function AuthGate() {
     }
 
     if (session && (inAuthGroup || inOAuthCallbackRoute)) {
-      router.replace("/");
+      router.replace("/(tabs)");
     }
   }, [isLoading, router, segments, session]);
 

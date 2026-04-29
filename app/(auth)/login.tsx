@@ -15,8 +15,6 @@ import Svg, { Path } from "react-native-svg";
 
 import { supabase } from "@/lib/supabase";
 
-WebBrowser.maybeCompleteAuthSession();
-
 type RateLimitResult = {
   allowed: boolean;
   retry_after_seconds: number;
@@ -49,18 +47,6 @@ function GoogleBrandIcon({ size = 18 }: { size?: number }) {
       />
     </Svg>
   );
-}
-
-function readAuthCallbackParam(url: string, key: string): string | null {
-  const [urlWithoutHash, hash = ""] = url.split("#");
-  const query = urlWithoutHash.includes("?")
-    ? urlWithoutHash.split("?")[1]
-    : "";
-
-  const queryParams = new URLSearchParams(query);
-  const hashParams = new URLSearchParams(hash);
-
-  return queryParams.get(key) ?? hashParams.get(key);
 }
 
 function resolveOAuthRedirectUrl() {
@@ -268,63 +254,8 @@ export default function LoginScreen() {
       return;
     }
 
-    const callbackUrl = authResult.url;
-    const callbackError =
-      readAuthCallbackParam(callbackUrl, "error_description") ??
-      readAuthCallbackParam(callbackUrl, "error");
-
-    if (callbackError) {
-      let normalizedError = callbackError;
-      try {
-        normalizedError = decodeURIComponent(callbackError);
-      } catch {
-        normalizedError = callbackError;
-      }
-      setErrorMessage(normalizedError);
-      setOAuthSubmitting(false);
-      return;
-    }
-
-    const accessToken = readAuthCallbackParam(callbackUrl, "access_token");
-    const refreshToken = readAuthCallbackParam(callbackUrl, "refresh_token");
-    const authCode = readAuthCallbackParam(callbackUrl, "code");
-
-    if (accessToken && refreshToken) {
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-
-      if (sessionError) {
-        setErrorMessage(sessionError.message);
-        setOAuthSubmitting(false);
-        return;
-      }
-
-      setSuccessMessage("Signed in with Google successfully.");
-      setOAuthSubmitting(false);
-      return;
-    }
-
-    if (authCode) {
-      const { error: exchangeError } =
-        await supabase.auth.exchangeCodeForSession(authCode);
-
-      if (exchangeError) {
-        setErrorMessage(exchangeError.message);
-        setOAuthSubmitting(false);
-        return;
-      }
-
-      setSuccessMessage("Signed in with Google successfully.");
-      setOAuthSubmitting(false);
-      return;
-    }
-
-    setErrorMessage(
-      `OAuth callback did not include session tokens. Add this redirect URL in Supabase Auth settings: ${redirectTo}`,
-    );
-    setOAuthSubmitting(false);
+    // On success, Expo Router will intercept the deep link and navigate to our OAuth callback screen.
+    // The callback screen will handle the session exchange and redirect.
   }, [oauthRedirectUrl]);
 
   const handleCopyOAuthRedirectUrl = React.useCallback(async () => {
