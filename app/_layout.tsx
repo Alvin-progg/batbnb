@@ -68,7 +68,7 @@ function AuthGate() {
     }
 
     if (session && (inAuthGroup || inOAuthCallbackRoute)) {
-      router.replace("/(tabs)");
+      router.replace("/");
     }
   }, [isLoading, router, segments, session]);
 
