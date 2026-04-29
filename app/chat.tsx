@@ -2,13 +2,13 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, SendHorizontal, Sparkles } from "lucide-react-native";
 import React from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import { generateChatResponse, getEmbedding } from "../lib/gemini";
 import { supabase } from "../lib/supabase";
@@ -111,14 +111,27 @@ export default function ChatScreen() {
           msg.id === botMessageId ? { ...msg, text: geminiResponse } : msg,
         ),
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error("Chat error:", err);
+
+      const errorMessage = String(err?.message || err);
+      if (
+        errorMessage.includes("503") ||
+        errorMessage.includes("high demand") ||
+        errorMessage.includes("Too Many Requests")
+      ) {
+        Alert.alert(
+          "High Demand 🐢",
+          "There are too many people using Donky right now. Please try again in a few moments!",
+        );
+      }
+
       setMessages((current) =>
         current.map((msg) =>
           msg.id === botMessageId
             ? {
                 ...msg,
-                text: "Sorry, I ran into an error connecting to my brain.",
+                text: "Sorry, I ran into an error connecting to my brain. Please try again later.",
               }
             : msg,
         ),
