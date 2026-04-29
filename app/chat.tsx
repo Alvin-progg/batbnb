@@ -2,14 +2,17 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, SendHorizontal, Sparkles } from "lucide-react-native";
 import React from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
+import { generateChatResponse, getEmbedding } from "../lib/gemini";
+import { supabase } from "../lib/supabase";
+
 type ChatRole = "bot" | "user";
 type ChatMessage = {
   id: number;
@@ -55,19 +58,85 @@ export default function ChatScreen() {
     createInitialMessages(listing),
   );
 
-  const sendMessage = React.useCallback((rawText: string) => {
+  const sendMessage = React.useCallback(async (rawText: string) => {
     const text = rawText.trim();
     if (!text) return;
+
+    const userMessageId = Date.now();
+    const botMessageId = userMessageId + 1;
+
+    // Optimistically add user msg & bot loading state
     setMessages((current) => [
       ...current,
-      { id: Date.now(), role: "user", text },
-      {
-        id: Date.now() + 1,
-        role: "bot",
-        text: "UI-only preview: this is where Gemini results will stream.",
-      },
+      { id: userMessageId, role: "user", text },
+      { id: botMessageId, role: "bot", text: "Thinking..." },
     ]);
     setDraft("");
+
+    try {
+      // 1. Get embedding for the user's prompt
+      const queryEmbedding = await getEmbedding(text);
+
+      // 2. Call the Supabase RPC to match against listings
+      const { data: closestListings, error } = await supabase.rpc(
+        "match_listings",
+        {
+          query_embedding: queryEmbedding,
+          match_threshold: 0.7, // Adjust to how strict you want matches
+          match_count: 3, // Top 3 results
+        },
+      );
+
+      if (error) {
+        console.error("Match listings error:", error);
+        throw error;
+      }
+
+      // 3. Format the context for Gemini
+      let snippetText = "No direct listings found, just chat generally.";
+      let snippets: string[] = [];
+      if (closestListings && closestListings.length > 0) {
+        snippets = closestListings.map(
+          (l: any) =>
+            `${l.title} at ${l.location} for Php ${l.monthly_rent}. Extras: ${l.subtitle} ${l.meta}`,
+        );
+        snippetText = snippets.join("\n\n");
+      }
+
+      // 4. Send to Gemini
+      const geminiResponse = await generateChatResponse(text, snippets);
+
+      setMessages((current) =>
+        current.map((msg) =>
+          msg.id === botMessageId ? { ...msg, text: geminiResponse } : msg,
+        ),
+      );
+    } catch (err: any) {
+      console.error("Chat error:", err);
+
+      const errorMessage = String(err?.message || err);
+      if (
+        errorMessage.includes("503") ||
+        errorMessage.includes("high demand") ||
+        errorMessage.includes("Too Many Requests")
+      ) {
+        Alert.alert(
+          "High Demand 🐢",
+          "There are too many people using Donky right now. Please try again in a few moments!",
+        );
+      }
+
+      setMessages((current) =>
+        current.map((msg) =>
+          msg.id === botMessageId
+            ? {
+                ...msg,
+                text: "Sorry, I ran into an error connecting to my brain. Please try again later.",
+              }
+            : msg,
+        ),
+      );
+    }
   }, []);
 
   return (

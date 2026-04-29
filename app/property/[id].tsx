@@ -1,16 +1,21 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, MessageCircleMore } from "lucide-react-native";
+import { ArrowLeft, MessageCircleMore, Send } from "lucide-react-native";
 import React from "react";
 import {
     ActivityIndicator,
+    Alert,
     Image,
+    KeyboardAvoidingView,
+    Platform,
     Pressable,
     ScrollView,
     Text,
+    TextInput,
     View,
 } from "react-native";
 
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/providers/auth-provider";
 
 type ListingDetails = {
   id: string;
@@ -26,28 +31,28 @@ export default function PropertyDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const { user } = useAuth();
 
   const [listing, setListing] = React.useState<ListingDetails | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [reviewInput, setReviewInput] = React.useState("");
+  const [submittingReview, setSubmittingReview] = React.useState(false);
 
-  React.useEffect(() => {
-    let isMounted = true;
-
-    async function fetchListing() {
+  const fetchListing = React.useCallback(
+    async (isMounted: { current: boolean }) => {
       if (!id) {
-        if (isMounted) setLoading(false);
+        if (isMounted.current) setLoading(false);
         return;
       }
 
-      setLoading(true);
       const { data: listingData, error } = await supabase
         .from("listings")
         .select(
           `
-          id, title, subtitle, monthly_rent, location,
-          listing_images ( id, image_url, sort_order ),
-          listing_reviews ( id, author_label, review_text )
-        `,
+        id, title, subtitle, monthly_rent, location,
+        listing_images ( id, image_url, sort_order ),
+        listing_reviews ( id, author_label, review_text, created_at )
+      `,
         )
         .eq("id", id)
         .single();
@@ -56,16 +61,22 @@ export default function PropertyDetailsScreen() {
         console.error("Error fetching listing:", error);
       }
 
-      if (listingData && isMounted) {
+      if (listingData && isMounted.current) {
         const sortedImages = (listingData.listing_images || [])
           .sort((a, b) => a.sort_order - b.sort_order)
           .map((img) => img.image_url);
 
-        const comments = (listingData.listing_reviews || []).map((r) => ({
-          id: r.id,
-          author: r.author_label,
-          text: r.review_text,
-        }));
+        const comments = (listingData.listing_reviews || [])
+          .sort(
+            (a, b) =>
+              new Date(a.created_at).getTime() -
+              new Date(b.created_at).getTime(),
+          )
+          .map((r) => ({
+            id: r.id,
+            author: r.author_label,
+            text: r.review_text,
+          }));
 
         setListing({
           id: listingData.id,
@@ -78,15 +89,47 @@ export default function PropertyDetailsScreen() {
         });
       }
 
-      if (isMounted) setLoading(false);
+      if (isMounted.current) setLoading(false);
+    },
+    [id],
+  );
+
+  React.useEffect(() => {
+    const isMounted = { current: true };
+    fetchListing(isMounted);
+    return () => {
+      isMounted.current = false;
+    };
+  }, [fetchListing]);
+
+  const handleSubmitReview = React.useCallback(async () => {
+    if (!reviewInput.trim() || !user || !id) {
+      return;
     }
 
-    fetchListing();
+    setSubmittingReview(true);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [id]);
+    // Generate a default label based on user's email if no name is present
+    const authorLabel =
+      user.user_metadata?.full_name || user.email?.split("@")[0] || "Student";
+
+    const { error } = await supabase.from("listing_reviews").insert({
+      listing_id: id,
+      author_id: user.id,
+      author_label: authorLabel,
+      review_text: reviewInput.trim(),
+    });
+
+    if (error) {
+      Alert.alert("Error posting review", error.message);
+    } else {
+      setReviewInput("");
+      // refetch reviews
+      await fetchListing({ current: true });
+    }
+
+    setSubmittingReview(false);
+  }, [reviewInput, user, id, fetchListing]);
 
   if (loading) {
     return (
@@ -156,7 +199,7 @@ export default function PropertyDetailsScreen() {
           ))}
         </ScrollView>
 
-        <View className="px-5 mt-6">
+        <View className="px-5 mt-8 mb-4">
           <Text className="text-zinc-100 text-lg font-semibold">
             Social proof
           </Text>
@@ -164,7 +207,36 @@ export default function PropertyDetailsScreen() {
             Student-reported feedback on internet speed, water, and landlord
             reliability.
           </Text>
-          <View className="mt-4 gap-3">
+
+          <View className="mt-5 flex-row items-center border border-zinc-800 bg-zinc-950 rounded-2xl overflow-hidden pr-2">
+            <TextInput
+              value={reviewInput}
+              onChangeText={setReviewInput}
+              placeholder="Write a review..."
+              placeholderTextColor="#71717a"
+              className="flex-1 px-4 py-3.5 text-zinc-100"
+              multiline
+              maxLength={250}
+            />
+            <Pressable
+              onPress={handleSubmitReview}
+              disabled={submittingReview || !reviewInput.trim()}
+              className={`p-2.5 rounded-xl ${
+                reviewInput.trim() ? "bg-indigo-600" : "bg-zinc-800"
+              }`}
+            >
+              {submittingReview ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Send
+                  size={16}
+                  color={reviewInput.trim() ? "#fff" : "#71717a"}
+                />
+              )}
+            </Pressable>
+          </View>
+
+          <View className="mt-6 gap-3">
             {listing.comments.map((comment) => (
               <View
                 key={comment.id}
@@ -182,20 +254,26 @@ export default function PropertyDetailsScreen() {
         </View>
       </ScrollView>
 
-      <View className="absolute bottom-0 left-0 right-0 border-t border-zinc-800 bg-[#09090b] px-5 pt-3 pb-7">
-        <Pressable
-          onPress={() =>
-            router.push({
-              pathname: "/chat",
-              params: { listing: listing.title },
-            })
-          }
-          className="bg-indigo-600 rounded-2xl py-4 flex-row items-center justify-center"
-        >
-          <MessageCircleMore size={20} color="#ffffff" />
-          <Text className="text-white font-semibold ml-2">Message Renter</Text>
-        </Pressable>
-      </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "position" : undefined}
+      >
+        <View className="border-t border-zinc-800 bg-[#09090b] px-5 pt-3 pb-8">
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: "/chat",
+                params: { listing: listing.title },
+              })
+            }
+            className="bg-indigo-600 rounded-2xl py-4 flex-row items-center justify-center"
+          >
+            <MessageCircleMore size={20} color="#ffffff" />
+            <Text className="text-white font-semibold ml-2">
+              Message Renter
+            </Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
