@@ -1,6 +1,6 @@
 import * as Clipboard from "expo-clipboard";
 import * as Linking from "expo-linking";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React from "react";
 import {
@@ -62,6 +62,7 @@ function resolveOAuthRedirectUrl() {
 }
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [isSignUpMode, setIsSignUpMode] = React.useState(false);
@@ -158,6 +159,7 @@ export default function LoginScreen() {
 
       if (data.session) {
         setSuccessMessage("Account created. You are now signed in.");
+        router.replace("/");
       } else {
         setSuccessMessage(
           "Account created. Check your email for the confirmation link.",
@@ -208,7 +210,15 @@ export default function LoginScreen() {
 
     setSuccessMessage("Signed in successfully.");
     setIsSubmitting(false);
-  }, [checkRateLimit, isSignUpMode, normalizedEmail, password, recordAttempt]);
+    router.replace("/");
+  }, [
+    checkRateLimit,
+    isSignUpMode,
+    normalizedEmail,
+    password,
+    recordAttempt,
+    router,
+  ]);
 
   const handleOAuthSignIn = React.useCallback(async () => {
     setErrorMessage(null);

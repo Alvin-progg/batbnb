@@ -68,7 +68,7 @@ export default function OAuthCallbackScreen() {
           return;
         }
 
-        router.replace("/(tabs)");
+        router.replace("/");
         return;
       }
 
@@ -81,7 +81,7 @@ export default function OAuthCallbackScreen() {
           return;
         }
 
-        router.replace("/(tabs)");
+        router.replace("/");
         return;
       }
 
@@ -90,7 +90,7 @@ export default function OAuthCallbackScreen() {
       } = await supabase.auth.getSession();
 
       if (session) {
-        router.replace("/(tabs)");
+        router.replace("/");
         return;
       }
 
@@ -107,7 +107,7 @@ export default function OAuthCallbackScreen() {
         } = await supabase.auth.getSession();
 
         if (delayedSession) {
-          router.replace("/(tabs)");
+          router.replace("/");
           return;
         }
 
@@ -125,7 +125,7 @@ export default function OAuthCallbackScreen() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        router.replace("/(tabs)");
+        router.replace("/");
       }
     });
 
@@ -151,7 +151,7 @@ export default function OAuthCallbackScreen() {
         } = await supabase.auth.getSession();
 
         if (session) {
-          router.replace("/(tabs)");
+          router.replace("/");
           return;
         }
 

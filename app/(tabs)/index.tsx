@@ -24,6 +24,8 @@ import {
 import MapView, { Marker } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { supabase } from "@/lib/supabase";
+
 type Listing = {
   id: string;
   title: string;
@@ -46,25 +48,6 @@ type PersistedFilters = {
 
 const FILTERS_STORAGE_KEY = "batbnb:discovery-filters:v1";
 const DRAWER_COLLAPSED_HEIGHT = 112;
-
-const listings: Listing[] = [
-  {
-    id: "batstate-hub",
-    title: "BatState Hub Dorm",
-    monthlyRent: 4500,
-    latitude: 13.76,
-    longitude: 121.055,
-    meta: "1 BR · 12 min to BSU",
-  },
-  {
-    id: "alangilan-suites",
-    title: "Alangilan Student Suites",
-    monthlyRent: 5000,
-    latitude: 13.75,
-    longitude: 121.06,
-    meta: "Studio · near transport",
-  },
-];
 
 const formatPriceTag = (amount: number) => {
   const compact = amount / 1000;
@@ -97,7 +80,43 @@ export default function DiscoveryScreen() {
   const [hasLoadedPersistedFilters, setHasLoadedPersistedFilters] =
     React.useState(false);
   const [isDrawerExpanded, setDrawerExpanded] = React.useState(false);
+  const [listings, setListings] = React.useState<Listing[]>([]);
   const drawerProgress = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    async function fetchListings() {
+      const { data, error } = await supabase
+        .from("listings")
+        .select("id, title, monthly_rent, latitude, longitude, meta")
+        .eq("status", "active");
+
+      if (error) {
+        console.error("Failed to load listings:", error);
+        return;
+      }
+
+      if (data && isMounted) {
+        setListings(
+          data.map((d) => ({
+            id: d.id,
+            title: d.title,
+            monthlyRent: d.monthly_rent,
+            latitude: d.latitude,
+            longitude: d.longitude,
+            meta: d.meta || "",
+          })),
+        );
+      }
+    }
+
+    fetchListings();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const drawerExpandedHeight = Math.min(
     420,

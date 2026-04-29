@@ -1,7 +1,16 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, MessageCircleMore } from "lucide-react-native";
 import React from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import {
+    ActivityIndicator,
+    Image,
+    Pressable,
+    ScrollView,
+    Text,
+    View,
+} from "react-native";
+
+import { supabase } from "@/lib/supabase";
 
 type ListingDetails = {
   id: string;
@@ -13,72 +22,95 @@ type ListingDetails = {
   comments: { id: string; author: string; text: string }[];
 };
 
-const LISTINGS: Record<string, ListingDetails> = {
-  "batstate-hub": {
-    id: "batstate-hub",
-    title: "BatState Hub Dorm",
-    subtitle: "Clean, quiet, and optimized for student routines",
-    price: "₱4,500/mo",
-    location: "Poblacion, Batangas City",
-    gallery: [
-      "https://images.unsplash.com/photo-1554995207-c18c203602cb?auto=format&fit=crop&w=1400&q=80",
-      "https://images.unsplash.com/photo-1493666438817-866a91353ca9?auto=format&fit=crop&w=1400&q=80",
-      "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1400&q=80",
-    ],
-    comments: [
-      {
-        id: "1",
-        author: "Kyla, 3rd Year",
-        text: "Wi-Fi is stable enough for night classes. Usually 70 to 120 Mbps.",
-      },
-      {
-        id: "2",
-        author: "Marco, Engineering",
-        text: "Water supply is okay. Best pressure from 6 AM to 10 PM.",
-      },
-      {
-        id: "3",
-        author: "Leah, BSIT",
-        text: "Landlord responds quickly and does monthly maintenance checks.",
-      },
-    ],
-  },
-  "alangilan-suites": {
-    id: "alangilan-suites",
-    title: "Alangilan Student Suites",
-    subtitle: "Minimal layout with easy jeep access to campus",
-    price: "₱5,000/mo",
-    location: "Alangilan, Batangas City",
-    gallery: [
-      "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1400&q=80",
-      "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1400&q=80",
-      "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=1400&q=80",
-    ],
-    comments: [
-      {
-        id: "1",
-        author: "Jules, 2nd Year",
-        text: "Good ventilation and solid study desk setup.",
-      },
-      {
-        id: "2",
-        author: "Ria, Accountancy",
-        text: "Commute is easy, and nearby karinderias are budget-friendly.",
-      },
-      {
-        id: "3",
-        author: "Sean, CE",
-        text: "Landlord allows flexible move-in dates for sem starts.",
-      },
-    ],
-  },
-};
-
 export default function PropertyDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
-  const listing = LISTINGS[id ?? "batstate-hub"] ?? LISTINGS["batstate-hub"];
+
+  const [listing, setListing] = React.useState<ListingDetails | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    async function fetchListing() {
+      if (!id) {
+        if (isMounted) setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      const { data: listingData, error } = await supabase
+        .from("listings")
+        .select(
+          `
+          id, title, subtitle, monthly_rent, location,
+          listing_images ( id, image_url, sort_order ),
+          listing_reviews ( id, author_label, review_text )
+        `,
+        )
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        console.error("Error fetching listing:", error);
+      }
+
+      if (listingData && isMounted) {
+        const sortedImages = (listingData.listing_images || [])
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((img) => img.image_url);
+
+        const comments = (listingData.listing_reviews || []).map((r) => ({
+          id: r.id,
+          author: r.author_label,
+          text: r.review_text,
+        }));
+
+        setListing({
+          id: listingData.id,
+          title: listingData.title,
+          subtitle: listingData.subtitle || "",
+          price: `₱${new Intl.NumberFormat("en-PH").format(listingData.monthly_rent)}/mo`,
+          location: listingData.location,
+          gallery: sortedImages,
+          comments,
+        });
+      }
+
+      if (isMounted) setLoading(false);
+    }
+
+    fetchListing();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <View className="flex-1 bg-[#09090b] items-center justify-center">
+        <Stack.Screen options={{ headerShown: false }} />
+        <ActivityIndicator size="small" color="#a5b4fc" />
+      </View>
+    );
+  }
+
+  if (!listing) {
+    return (
+      <View className="flex-1 bg-[#09090b] items-center justify-center space-y-4">
+        <Stack.Screen options={{ headerShown: false }} />
+        <Text className="text-zinc-400">Listing not found</Text>
+        <Pressable
+          onPress={() => router.back()}
+          className="bg-zinc-800 px-4 py-2 rounded-full"
+        >
+          <Text className="text-zinc-100">Go Back</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-[#09090b]">
