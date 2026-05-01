@@ -9,12 +9,12 @@ const genAI = new GoogleGenerativeAI(apiKey);
 
 export async function getEmbedding(text: string): Promise<number[]> {
   const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
+  // @ts-ignore – outputDimensionality is valid but missing from some type versions
   const result = await model.embedContent({
     content: { role: "user", parts: [{ text }] },
     outputDimensionality: 768,
   });
-  const embedding = result.embedding;
-  return embedding.values;
+  return result.embedding.values;
 }
 
 export async function generateChatResponse(
@@ -26,25 +26,46 @@ export async function generateChatResponse(
     throw new Error("Missing EXPO_PUBLIC_GROQ_API_KEY in .env");
   }
 
-  const contextText = contextSnippets.join("\n\n");
-  {
-    /**
-CRITICAL UI RULE: You MUST NOT list out the names, prices, or details of the apartments directly in your text response! Instead, you will give a short introductory sentence (e.g. "Here are some great spots near campus:"), and then immediately output the exact UUIDs of those apartments in a <uuids> XML tag at the very end. The app will automatically render beautiful interactive UI cards for them!
+  // Clearly label each listing with its exact ID so the LLM has no excuse to guess
+  const contextText =
+    contextSnippets.length > 0
+      ? contextSnippets
+          .map((s, i) => `--- LISTING ${i + 1} ---\n${s}`)
+          .join("\n\n")
+      : "No listings available.";
 
-Example Format:
-I found some affordable options near the engineering building for you!
-<uuids>a1b2c3d4-..., f5e6d7c8-...</uuids> */
-  }
-  const systemPrompt = `You are Donky, a helpful AI assistant for BatBnB, a student housing app for Batangas State University students. 
-For responses, you MUST follow these rules:
-- You MUST NOT list out the names, prices, or details of the apartments directly in your text response! Instead, you will give a short introductory sentence (e.g. "Here are some great spots near campus:"), and then immediately output the exact UUIDs of those apartments in a <uuids> XML tag at the very end. The app will automatically render beautiful interactive UI cards for them!
-- You MUST ONLY return apartment listings that are relevant to the user's query and the provided context. If there are no relevant listings, you MUST return an empty list of UUIDs.
-- You MUST NOT make up any apartment listings that are not in the provided context.
-- You MUST ensure that the UUIDs you return are formatted correctly as valid UUID strings.
+  const systemPrompt = `You are Donky, a helpful AI assistant for BatBnB, a student housing app for Batangas State University students.
+
+AVAILABLE LISTINGS (these are the ONLY listings that exist):
+${contextText}
+
+--- STRICT RULES YOU MUST FOLLOW ---
+
+RULE 1 - NEVER INVENT IDs:
+The <uuids> tag MUST only contain IDs copied EXACTLY, character-for-character, from the "ID: ..." fields shown above.
+Do NOT generate, guess, or modify any UUID. If you are not 100% sure an ID is in the list above, do not include it.
+
+RULE 2 - DO NOT LIST DETAILS IN TEXT:
+Never write apartment names, prices, or addresses in your text response.
+Only write a single short sentence like "Here are some options near campus:" and then the <uuids> tag.
+
+RULE 3 - FORMAT:
+Your entire response must follow this exact format and nothing else:
+<your one short sentence here>
+<uuids>paste-exact-id-here, paste-exact-id-here</uuids>
+
+RULE 4 - NO RESULTS:
+If no listings match the user's request, reply with just a short message and an empty <uuids></uuids> tag.
+
+RULE 5 - DO NOT HALLUCINATE:
+You are strictly forbidden from making up UUIDs. Violation of this rule breaks the entire app.
 
 
-Listings Context:
-${contextText}`;
+RULE 6 - BE HELPFUL:
+If the user asks for something that can't be fulfilled with the available listings, do your best to be helpful and suggest alternatives, but still follow all the rules above.
+
+Now, based on the above rules and available listings, answer the user's question:
+${prompt}`;
 
   try {
     const response = await fetch(
@@ -56,12 +77,12 @@ ${contextText}`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant", // Lightning fast LLM
+          model: "llama-3.3-70b-versatile", // Bigger model = better instruction following
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: prompt },
           ],
-          temperature: 0.2, // Lower temperature makes it more accurate at filtering numbers
+          temperature: 0.0, // Zero temp = deterministic, no creativity with IDs
         }),
       },
     );

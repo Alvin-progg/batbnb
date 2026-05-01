@@ -21,7 +21,7 @@ type Listing = {
   title: string;
   location: string;
   monthly_rent: number;
-  status: string;
+  status?: string;
   subtitle?: string;
   meta?: string;
 };
@@ -42,6 +42,35 @@ const QUICK_REPLIES = [
 
 const UUID_REGEX =
   /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g;
+
+function normalizeListing(raw: any): Listing | null {
+  const id = String(raw?.id ?? raw?.listing_id ?? "").toLowerCase();
+  if (!id) return null;
+
+  return {
+    id,
+    title: String(raw?.title ?? "Untitled listing"),
+    location: String(raw?.location ?? "Unknown location"),
+    monthly_rent: Number(raw?.monthly_rent ?? 0),
+    status: raw?.status ? String(raw.status) : undefined,
+    subtitle: raw?.subtitle ? String(raw.subtitle) : undefined,
+    meta: raw?.meta ? String(raw.meta) : undefined,
+  };
+}
+
+async function fetchFallbackListings(): Promise<Listing[]> {
+  const { data, error } = await (supabase as any)
+    .from("listings")
+    .select("id, title, subtitle, meta, monthly_rent, location, status")
+    .eq("status", "active")
+    .limit(10);
+
+  if (error) throw error;
+
+  return (data ?? [])
+    .map((row: any) => normalizeListing(row))
+    .filter((row: Listing | null): row is Listing => row !== null);
+}
 
 function createInitialMessages(listing?: string): ChatMessage[] {
   const intro = listing
@@ -83,8 +112,7 @@ export default function ChatScreen() {
     try {
       const queryEmbedding = await getEmbedding(text);
 
-      // @ts-ignore – match_listings is a custom RPC not in the generated types
-      const { data: closestListings, error } = await supabase.rpc(
+      const { data: closestListings, error } = await (supabase as any).rpc(
         "match_listings",
         {
           query_embedding: queryEmbedding,
@@ -95,7 +123,14 @@ export default function ChatScreen() {
 
       if (error) throw error;
 
-      const listings: Listing[] = closestListings ?? [];
+      let listings: Listing[] = (closestListings ?? [])
+        .map((row: any) => normalizeListing(row))
+        .filter((row: Listing | null): row is Listing => row !== null);
+
+      // If vector search is empty, use active listings as a safe UI fallback.
+      if (listings.length === 0) {
+        listings = await fetchFallbackListings();
+      }
 
       const snippets: string[] = listings.map(
         (l) =>
@@ -120,6 +155,8 @@ export default function ChatScreen() {
         );
       }
 
+      recommendedIds = Array.from(new Set(recommendedIds));
+
       console.log("Extracted IDs:", recommendedIds);
 
       // Strip XML tags, code blocks, and stray UUIDs from display text
@@ -131,9 +168,15 @@ export default function ChatScreen() {
         .trim();
 
       // Match IDs → listing objects
+      const listingsById = new Map(
+        listings.map((listing) => [listing.id.toLowerCase(), listing]),
+      );
+
       let suggestedListings: Listing[] =
         recommendedIds.length > 0
-          ? listings.filter((l) => recommendedIds.includes(l.id.toLowerCase()))
+          ? recommendedIds
+              .map((id) => listingsById.get(id))
+              .filter((listing): listing is Listing => Boolean(listing))
           : [];
 
       // Fallback: LLM gave no IDs → show top 3 from vector search
@@ -221,95 +264,86 @@ export default function ChatScreen() {
               </View>
             ) : (
               <View className="w-full">
-                {/* Plain text bubble — only when no cards */}
-                {(message.suggestedListings == null ||
-                  message.suggestedListings.length === 0) && (
-                  <View className="max-w-[90%] bg-zinc-900 border border-zinc-800 rounded-2xl rounded-bl-md px-4 py-3">
-                    <Text className="text-zinc-200">{message.text}</Text>
+                {/* Text bubble */}
+                {message.text !== "" && (
+                  <View className="max-w-[90%] bg-zinc-900 border border-zinc-800 rounded-2xl rounded-bl-md px-4 py-3 mb-3">
+                    <Text className="text-zinc-200 text-sm leading-5">
+                      {message.text}
+                    </Text>
                   </View>
                 )}
 
-                {/* Short intro line above cards */}
-                {message.suggestedListings != null &&
-                  message.suggestedListings.length > 0 && (
-                    <Text className="text-zinc-400 text-xs mb-3 ml-1">
-                      {message.text !== ""
-                        ? message.text
-                        : "Here are some listings for you:"}
-                    </Text>
-                  )}
-
-                {/* Full-width stacked listing cards */}
-                {message.suggestedListings != null &&
-                  message.suggestedListings.map((l) => (
-                    <View
-                      key={l.id}
-                      className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-3"
-                    >
-                      {/* Title + Status badge */}
-                      <View className="flex-row items-start justify-between mb-1">
+                {/* Listing cards */}
+                {message.suggestedListings?.map((l) => (
+                  <View
+                    key={l.id}
+                    className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-3"
+                  >
+                    {/* Title + status */}
+                    <View className="flex-row items-start justify-between mb-1">
+                      <Text
+                        className="text-zinc-100 font-semibold text-sm flex-1 mr-2"
+                        numberOfLines={2}
+                      >
+                        {l.title}
+                      </Text>
+                      <View
+                        className={
+                          l.status?.toLowerCase() === "available"
+                            ? "px-2 py-0.5 rounded-full bg-green-900/40"
+                            : "px-2 py-0.5 rounded-full bg-red-900/40"
+                        }
+                      >
                         <Text
-                          className="text-zinc-100 font-semibold text-base flex-1 mr-2"
-                          numberOfLines={2}
-                        >
-                          {l.title}
-                        </Text>
-                        <View
                           className={
                             l.status?.toLowerCase() === "available"
-                              ? "px-2 py-0.5 rounded-full bg-green-900/40"
-                              : "px-2 py-0.5 rounded-full bg-red-900/40"
+                              ? "text-[10px] font-bold uppercase tracking-wider text-green-400"
+                              : "text-[10px] font-bold uppercase tracking-wider text-red-400"
                           }
                         >
-                          <Text
-                            className={
-                              l.status?.toLowerCase() === "available"
-                                ? "text-[10px] font-bold uppercase tracking-wider text-green-400"
-                                : "text-[10px] font-bold uppercase tracking-wider text-red-400"
-                            }
-                          >
-                            {l.status}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {/* Location */}
-                      <Text
-                        className="text-zinc-500 text-xs mb-2"
-                        numberOfLines={1}
-                      >
-                        📍 {l.location}
-                      </Text>
-
-                      {/* Description */}
-                      {(l.subtitle != null || l.meta != null) && (
-                        <Text
-                          className="text-zinc-400 text-xs mb-3 leading-4"
-                          numberOfLines={2}
-                        >
-                          {l.subtitle ?? l.meta}
+                          {l.status}
                         </Text>
-                      )}
-
-                      {/* Price + CTA */}
-                      <View className="flex-row items-center justify-between mt-1">
-                        <Text className="text-indigo-400 font-bold text-base">
-                          Php {l.monthly_rent}
-                          <Text className="text-zinc-500 text-xs font-normal">
-                            /mo
-                          </Text>
-                        </Text>
-                        <Pressable
-                          onPress={() => router.push(`/property/${l.id}`)}
-                          className="bg-indigo-600 active:bg-indigo-700 px-4 py-2 rounded-xl"
-                        >
-                          <Text className="text-white text-xs font-semibold">
-                            View Listing →
-                          </Text>
-                        </Pressable>
                       </View>
                     </View>
-                  ))}
+
+                    {/* Location */}
+                    <Text
+                      className="text-zinc-500 text-xs mb-2"
+                      numberOfLines={1}
+                    >
+                      📍 {l.location}
+                    </Text>
+
+                    {/* Description */}
+                    {(l.subtitle ?? l.meta) != null && (
+                      <Text
+                        className="text-zinc-400 text-xs mb-3 leading-4"
+                        numberOfLines={2}
+                      >
+                        {l.subtitle ?? l.meta}
+                      </Text>
+                    )}
+
+                    {/* Price + CTA */}
+                    <View className="flex-row items-center justify-between mt-1">
+                      <Text className="text-indigo-400 font-bold text-sm">
+                        Php {l.monthly_rent}
+                        <Text className="text-zinc-500 text-xs font-normal">
+                          {" "}
+                          /mo
+                        </Text>
+                      </Text>
+                      <Pressable
+                        onPress={() => router.push(`/property/${l.id}`)}
+                        className="bg-indigo-600 active:bg-indigo-700 px-4 py-2 rounded-xl"
+                      >
+                        <Text className="text-white text-xs font-semibold">
+                          View Listing →
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
               </View>
             )}
           </View>
