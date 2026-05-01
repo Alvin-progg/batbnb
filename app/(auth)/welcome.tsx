@@ -1,13 +1,12 @@
 import { Stack, useRouter } from "expo-router";
 import React from "react";
 import {
-    Animated,
-    Dimensions,
-    Easing,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  Animated,
+  Dimensions,
+  Easing,
+  Pressable,
+  Text,
+  View,
 } from "react-native";
 
 const { width } = Dimensions.get("window");
@@ -26,147 +25,64 @@ export default function WelcomeScreen() {
   }, [fade]);
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-[#060607] items-center justify-center px-6">
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={styles.backgroundAccent} />
+      <View
+        className="absolute rounded-full bg-indigo-500/10"
+        style={{
+          top: -width * 0.35,
+          right: -width * 0.15,
+          width: width * 1.2,
+          height: width * 1.2,
+          transform: [{ rotate: "25deg" }],
+        }}
+      />
 
       <Animated.View
-        style={[
-          styles.card,
-          {
-            opacity: fade,
-            transform: [
-              {
-                translateY: fade.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [24, 0],
-                }),
-              },
-            ],
-          },
-        ]}
+        className="w-full max-w-[460px] rounded-[20px] p-[28px] bg-zinc-900/60 border border-white/5 items-center shadow-2xl"
+        style={{
+          opacity: fade,
+          transform: [
+            {
+              translateY: fade.interpolate({
+                inputRange: [0, 1],
+                outputRange: [24, 0],
+              }),
+            },
+          ],
+        }}
       >
-        <View style={styles.hero}>
-          <Text style={styles.logoEmoji}>🦇</Text>
-          <Text style={styles.title}>Welcome to BatBnB</Text>
-          <Text style={styles.subtitle}>
+        <View className="items-center mb-[18px]">
+          <Text className="text-slate-50 text-2xl font-bold mb-[6px] text-center">
+            Welcome to BatBnB
+          </Text>
+          <Text className="text-zinc-400 text-[13px] text-center leading-[18px] max-w-[420px]">
             Student-friendly rooms and apartments near Batangas State
             University.
           </Text>
         </View>
 
-        <View style={styles.actions}>
+        <View className="w-full mt-[6px]">
           <Pressable
             onPress={() => router.push("/(auth)/login?mode=signup")}
-            style={styles.primaryButton}
+            className="bg-indigo-500 py-[14px] rounded-[14px] items-center mb-3"
           >
-            <Text style={styles.primaryButtonText}>Get started</Text>
+            <Text className="text-white font-bold text-base">Get started</Text>
           </Pressable>
 
           <Pressable
             onPress={() => router.push("/(auth)/login")}
-            style={styles.secondaryButton}
+            className="border border-slate-400/10 py-3 rounded-[14px] items-center"
           >
-            <Text style={styles.secondaryButtonText}>Sign in</Text>
+            <Text className="text-slate-300 font-semibold text-sm">Sign in</Text>
           </Pressable>
         </View>
 
-        <Text style={styles.terms}>
+        <Text className="text-zinc-500 text-[11px] mt-[14px] text-center">
           By continuing you agree to our Terms and Privacy Policy.
         </Text>
       </Animated.View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#060607",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  backgroundAccent: {
-    position: "absolute",
-    top: -width * 0.35,
-    right: -width * 0.15,
-    width: width * 1.2,
-    height: width * 1.2,
-    borderRadius: width * 0.6,
-    backgroundColor: "rgba(99,102,241,0.12)",
-    transform: [{ rotate: "25deg" }],
-  },
-  card: {
-    width: "100%",
-    maxWidth: 460,
-    borderRadius: 20,
-    padding: 28,
-    backgroundColor: "rgba(17,24,39,0.6)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.04)",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 30,
-    elevation: 8,
-  },
-  hero: {
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  logoEmoji: {
-    fontSize: 64,
-    marginBottom: 12,
-  },
-  title: {
-    color: "#F8FAFC",
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 6,
-    textAlign: "center",
-  },
-  subtitle: {
-    color: "#A1A1AA",
-    fontSize: 13,
-    textAlign: "center",
-    lineHeight: 18,
-    maxWidth: 420,
-  },
-  actions: {
-    width: "100%",
-    marginTop: 6,
-  },
-  primaryButton: {
-    backgroundColor: "#6366F1",
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  primaryButtonText: {
-    color: "#FFF",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.12)",
-    paddingVertical: 12,
-    borderRadius: 14,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    color: "#CBD5E1",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  terms: {
-    color: "#6B7280",
-    fontSize: 11,
-    marginTop: 14,
-    textAlign: "center",
-  },
-});
