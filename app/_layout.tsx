@@ -3,7 +3,7 @@ import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
 import React from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import "react-native-reanimated";
 
 import { AuthProvider, useAuth } from "@/providers/auth-provider";
@@ -41,9 +41,9 @@ function RouteLoadingOverlay() {
   }
 
   return (
-    <View pointerEvents="none" style={styles.loadingOverlay}>
+    <View pointerEvents="none" className="absolute inset-0 bg-zinc-950/95 items-center justify-center">
       <ActivityIndicator size="small" color="#a5b4fc" />
-      <Text style={styles.loadingText}>Loading</Text>
+      <Text className="mt-[10px] text-zinc-400 text-[12px] tracking-[0.4px]">Loading</Text>
     </View>
   );
 }
@@ -52,7 +52,6 @@ function AuthGate() {
   const { isLoading, session } = useAuth();
   const router = useRouter();
   const segments = useSegments();
-  const pathname = usePathname();
 
   React.useEffect(() => {
     if (isLoading) {
@@ -66,18 +65,13 @@ function AuthGate() {
       // eslint-disable-next-line no-console
       console.log("[AuthGate] session:", session);
       // eslint-disable-next-line no-console
-      console.log("[AuthGate] pathname:", pathname);
-      // eslint-disable-next-line no-console
       console.log("[AuthGate] segments:", segments);
     }
 
     const inOAuthCallbackRoute =
       segments[0] === "auth" && segments[1] === "callback";
 
-    const alreadyInAuthPath =
-      pathname.startsWith("/(auth)") ||
-      pathname === "/auth/callback" ||
-      pathname.startsWith("/auth/");
+    const alreadyInAuthPath = segments[0] === "(auth)" || segments[0] === "auth";
 
     if (!session && !alreadyInAuthPath && !inOAuthCallbackRoute) {
       router.replace("/(auth)/welcome");
@@ -94,38 +88,24 @@ function AuthGate() {
   }
 
   return (
-    <View pointerEvents="none" style={styles.loadingOverlay}>
+    <View pointerEvents="none" className="absolute inset-0 bg-zinc-950/95 items-center justify-center">
       <ActivityIndicator size="small" color="#a5b4fc" />
-      <Text style={styles.loadingText}>Checking session</Text>
+      <Text className="mt-[10px] text-zinc-400 text-[12px] tracking-[0.4px]">Checking session</Text>
     </View>
   );
 }
 
 export default function RootLayout() {
-  function DevForceWelcome() {
-    const router = useRouter();
-    const pathname = usePathname();
-
-    React.useEffect(() => {
-      if (!__DEV__) return;
-      // Only force when at the root to avoid disrupting other flows
-      if (pathname === "/" || pathname === "") {
-        router.replace("/(auth)/welcome");
-      }
-    }, [pathname, router]);
-
-    return null;
-  }
 
   return (
     <AuthProvider>
       <ThemeProvider value={DarkTheme}>
-        <View style={styles.container}>
+        <View className="flex-1 bg-zinc-950">
           <Stack
             screenOptions={{
               headerShown: false,
               animation: "fade",
-              contentStyle: styles.screenContent,
+              contentStyle: { backgroundColor: "#09090b" },
             }}
           >
             <Stack.Screen name="(auth)" />
@@ -138,12 +118,11 @@ export default function RootLayout() {
               options={{
                 presentation: "modal",
                 title: "Modal",
-                contentStyle: styles.screenContent,
+                contentStyle: { backgroundColor: "#09090b" },
               }}
             />
           </Stack>
           <AuthGate />
-          {__DEV__ ? <DevForceWelcome /> : null}
           <RouteLoadingOverlay />
           <StatusBar style="light" backgroundColor="#09090b" />
         </View>
@@ -152,24 +131,3 @@ export default function RootLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#09090b",
-  },
-  screenContent: {
-    backgroundColor: "#09090b",
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(9, 9, 11, 0.96)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingText: {
-    marginTop: 10,
-    color: "#a1a1aa",
-    fontSize: 12,
-    letterSpacing: 0.4,
-  },
-});

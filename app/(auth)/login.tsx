@@ -230,6 +230,7 @@ export default function LoginScreen() {
     setOAuthSubmitting(true);
 
     const redirectTo = oauthRedirectUrl;
+    console.log("👉 COPY THIS TO SUPABASE REDIRECT URLs:", redirectTo);
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: OAUTH_PROVIDER,
@@ -257,6 +258,45 @@ export default function LoginScreen() {
       data.url,
       redirectTo,
     );
+
+    console.log("🔍 Browser Session Result:", JSON.stringify(authResult, null, 2));
+
+    if (authResult.type === "success" && authResult.url) {
+      console.log("✅ Browser returned success URL, processing session...");
+
+      // Helper to parse tokens from the URL hash/query
+      const parseParam = (url: string, key: string) => {
+        const parts = url.split(/[#?&]/);
+        for (const part of parts) {
+          if (part.startsWith(`${key}=`)) return part.split("=")[1];
+        }
+        return null;
+      };
+
+      const accessToken = parseParam(authResult.url, "access_token");
+      const refreshToken = parseParam(authResult.url, "refresh_token");
+
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (sessionError) {
+          setErrorMessage(`Session error: ${sessionError.message}`);
+          setOAuthSubmitting(false);
+          return;
+        }
+
+        console.log("🎉 OAuth session set successfully!");
+        router.replace("/");
+        return;
+      }
+
+      // If no tokens found, fallback to navigating to callback screen
+      router.replace(authResult.url as any);
+      return;
+    }
 
     if (authResult.type !== "success") {
       if (authResult.type === "cancel" || authResult.type === "dismiss") {

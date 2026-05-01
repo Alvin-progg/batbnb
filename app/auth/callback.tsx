@@ -37,7 +37,9 @@ export default function OAuthCallbackScreen() {
 
   const completeOAuth = React.useCallback(
     async (url: string) => {
+      console.log("🔗 Callback received URL:", url);
       if (processedUrlRef.current === url) {
+        console.log("⏭️ URL already processed, skipping.");
         return;
       }
       processedUrlRef.current = url;
