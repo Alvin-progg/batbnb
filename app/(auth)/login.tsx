@@ -1,15 +1,15 @@
 import * as Clipboard from "expo-clipboard";
 import * as Linking from "expo-linking";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    Text,
-    TextInput,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
@@ -65,7 +65,11 @@ export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [isSignUpMode, setIsSignUpMode] = React.useState(false);
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const initialSignUp = params?.mode === "signup";
+  const [isSignUpMode, setIsSignUpMode] = React.useState<boolean>(
+    Boolean(initialSignUp),
+  );
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isOAuthSubmitting, setOAuthSubmitting] = React.useState(false);
   const [oauthDebugNotice, setOAuthDebugNotice] = React.useState<string | null>(
@@ -323,30 +327,6 @@ export default function LoginScreen() {
               </Text>
             </View>
           </Pressable>
-
-          {__DEV__ ? (
-            <View className="mt-3 border border-zinc-800 rounded-xl bg-zinc-900/70 px-3 py-2">
-              <Text className="text-zinc-400 text-xs">
-                OAuth redirect (debug)
-              </Text>
-              <Text selectable className="text-zinc-200 text-xs mt-1">
-                {oauthRedirectUrl}
-              </Text>
-              <Pressable
-                onPress={handleCopyOAuthRedirectUrl}
-                className="self-start mt-2 border border-zinc-700 rounded-md px-2.5 py-1.5"
-              >
-                <Text className="text-zinc-100 text-xs font-semibold">
-                  Copy URL
-                </Text>
-              </Pressable>
-              {oauthDebugNotice ? (
-                <Text className="text-emerald-300 text-xs mt-1.5">
-                  {oauthDebugNotice}
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
 
           <View className="mt-4 flex-row items-center">
             <View className="flex-1 h-px bg-zinc-800" />
