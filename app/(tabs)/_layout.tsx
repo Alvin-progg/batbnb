@@ -1,13 +1,15 @@
 import { Tabs } from "expo-router";
-import { Heart, Map } from "lucide-react-native";
+import { Heart, LayoutDashboard, Map, MessageCircle } from "lucide-react-native";
 import React from "react";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/haptic-tab";
+import { useAuth } from "@/providers/auth-provider";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { isOwner } = useAuth();
   const bottomInset = Math.max(
     insets.bottom,
     Platform.OS === "android" ? 8 : 12,
@@ -62,6 +64,26 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: "Messages",
+          tabBarIcon: ({ color }) => (
+            <MessageCircle size={24} color={color} strokeWidth={2.5} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: "Dashboard",
+          tabBarIcon: ({ color }) => (
+            <LayoutDashboard size={24} color={color} strokeWidth={2.5} />
+          ),
+          href: isOwner ? "/dashboard" : null,
+        }}
+      />
     </Tabs>
+
   );
 }

@@ -16,6 +16,7 @@ import {
 
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/providers/auth-provider";
+import { ProximityCard } from "@/components/proximity-card";
 
 type ListingDetails = {
   id: string;
@@ -23,6 +24,9 @@ type ListingDetails = {
   subtitle: string;
   price: string;
   location: string;
+  latitude: number;
+  longitude: number;
+  owner_id: string;
   gallery: string[];
   comments: { id: string; author: string; text: string }[];
 };
@@ -49,7 +53,7 @@ export default function PropertyDetailsScreen() {
         .from("listings")
         .select(
           `
-        id, title, subtitle, monthly_rent, location,
+        id, title, subtitle, monthly_rent, location, latitude, longitude, owner_id,
         listing_images ( id, image_url, sort_order ),
         listing_reviews ( id, author_label, review_text, created_at )
       `,
@@ -84,6 +88,9 @@ export default function PropertyDetailsScreen() {
           subtitle: listingData.subtitle || "",
           price: `₱${new Intl.NumberFormat("en-PH").format(listingData.monthly_rent)}/mo`,
           location: listingData.location,
+          latitude: listingData.latitude,
+          longitude: listingData.longitude,
+          owner_id: listingData.owner_id ?? "",
           gallery: sortedImages,
           comments,
         });
@@ -131,6 +138,56 @@ export default function PropertyDetailsScreen() {
     setSubmittingReview(false);
   }, [reviewInput, user, id, fetchListing]);
 
+  const handleMessageLandlord = React.useCallback(async () => {
+    if (!user) {
+      Alert.alert("Authentication required", "Please log in to message the landlord.");
+      return;
+    }
+    if (!listing) return;
+    
+    // Prevent owner from messaging themselves
+    if (user.id === listing.owner_id) {
+      Alert.alert("Notice", "This is your own listing.");
+      return;
+    }
+
+    try {
+      // 1. Check if a thread already exists
+      const { data: existingThread, error: searchError } = await supabase
+        .from("chat_threads")
+        .select("id")
+        .eq("listing_id", listing.id)
+        .eq("renter_id", user.id)
+        .maybeSingle();
+
+      if (searchError) throw searchError;
+
+      if (existingThread) {
+        router.push(`/chat/${existingThread.id}` as any);
+        return;
+      }
+
+      // 2. Create new thread if not exists
+      const { data: newThread, error: createError } = await supabase
+        .from("chat_threads")
+        .insert({
+          listing_id: listing.id,
+          owner_id: listing.owner_id,
+          renter_id: user.id,
+        })
+        .select("id")
+        .single();
+
+      if (createError) throw createError;
+
+      if (newThread) {
+        router.push(`/chat/${newThread.id}` as any);
+      }
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Could not start chat.");
+    }
+  }, [user, listing, router]);
+
   if (loading) {
     return (
       <View className="flex-1 bg-[#09090b] items-center justify-center">
@@ -177,6 +234,11 @@ export default function PropertyDetailsScreen() {
             {listing.price}
           </Text>
           <Text className="text-zinc-500 mt-1 text-sm">{listing.location}</Text>
+
+          <ProximityCard
+            listingLatitude={listing.latitude}
+            listingLongitude={listing.longitude}
+          />
         </View>
 
         <ScrollView
@@ -259,17 +321,12 @@ export default function PropertyDetailsScreen() {
       >
         <View className="border-t border-zinc-800 bg-[#09090b] px-5 pt-3 pb-8">
           <Pressable
-            onPress={() =>
-              router.push({
-                pathname: "/chat",
-                params: { listing: listing.title },
-              })
-            }
+            onPress={handleMessageLandlord}
             className="bg-indigo-600 rounded-2xl py-4 flex-row items-center justify-center"
           >
             <MessageCircleMore size={20} color="#ffffff" />
             <Text className="text-white font-semibold ml-2">
-              Message Renter
+              Message Landlord
             </Text>
           </Pressable>
         </View>

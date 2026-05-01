@@ -33,12 +33,7 @@ type ChatMessage = {
   suggestedListings?: Listing[];
 };
 
-const QUICK_REPLIES = [
-  "Check availability",
-  "View on map",
-  "Near Batangas State U",
-  "Show under 4,500",
-];
+
 
 const UUID_REGEX =
   /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g;
@@ -352,17 +347,7 @@ export default function ChatScreen() {
 
       {/* Input area */}
       <View className="bg-[#09090b] mb-5 border-t border-zinc-800 px-4 pt-3 pb-6">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {QUICK_REPLIES.map((reply) => (
-            <Pressable
-              key={reply}
-              onPress={() => sendMessage(reply)}
-              className="bg-zinc-900 border border-zinc-800 rounded-full px-4 py-2 mr-2"
-            >
-              <Text className="text-zinc-300 text-xs">{reply}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+
 
         <View className="mt-3 flex-row items-center bg-zinc-950 border border-zinc-800 rounded-2xl px-3">
           <TextInput

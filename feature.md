@@ -65,7 +65,3 @@ Here are recommended features natively supported by your current database schema
 - **Concept**: Notify students when a Landlord replies to their chat, or when a saved listing drops in price.
 - **Implementation**: Integrate `expo-notifications` with Supabase Edge Functions / Webhooks to trigger background alerts to devices.
 
-### 🗺️ 6. Proximity & Directions
-
-- **Concept**: Tell the student exactly how far the dorm is from Batangas State University.
-- **Implementation**: Integrate Expo Location and a routing API to estimate walking or transport time directly to the campus!

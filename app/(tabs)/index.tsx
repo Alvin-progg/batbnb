@@ -6,6 +6,7 @@ import {
     Bot,
     ChevronDown,
     ChevronUp,
+    MapPin,
     Search,
     SlidersHorizontal,
 } from "lucide-react-native";
@@ -25,6 +26,7 @@ import MapView, { Marker } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { supabase } from "@/lib/supabase";
+import { distanceToCampusKm, formatDistance } from "@/lib/distance";
 
 type Listing = {
   id: string;
@@ -322,8 +324,8 @@ export default function DiscoveryScreen() {
             }}
             onPress={() => router.push(`/property/${listing.id}` as any)}
           >
-            <View className="items-center">
-              <View className="bg-zinc-950 border border-zinc-700 px-3 py-1.5 rounded-xl shadow-md">
+            <View style={{ alignItems: 'center', alignSelf: 'flex-start', padding: 4 }}>
+              <View className="bg-zinc-950 border border-zinc-500 px-3 py-1.5 rounded-xl shadow-lg">
                 <Text className="text-zinc-100 font-bold text-sm tracking-tight">
                   {formatPriceTag(listing.monthlyRent)}
                 </Text>
@@ -332,14 +334,13 @@ export default function DiscoveryScreen() {
                 style={{
                   width: 0,
                   height: 0,
-                  backgroundColor: "transparent",
-                  borderStyle: "solid",
                   borderLeftWidth: 6,
                   borderRightWidth: 6,
                   borderTopWidth: 6,
                   borderLeftColor: "transparent",
                   borderRightColor: "transparent",
-                  borderTopColor: "#3f3f46", // Matches border-zinc-700 to look like a connected pin
+                  borderTopColor: "#71717a", // zinc-500 hex
+                  marginTop: -1,
                 }}
               />
             </View>
@@ -424,7 +425,12 @@ export default function DiscoveryScreen() {
                 paddingHorizontal: 12,
                 paddingBottom: 12,
               }}
-              renderItem={({ item }) => (
+              renderItem={({ item }) => {
+                const distKm = distanceToCampusKm({
+                  latitude: item.latitude,
+                  longitude: item.longitude,
+                });
+                return (
                 <Pressable
                   onPress={() => router.push(`/property/${item.id}` as any)}
                   className="mb-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
@@ -443,11 +449,20 @@ export default function DiscoveryScreen() {
                   <Text className="text-zinc-200 mt-2 font-semibold">
                     {item.title}
                   </Text>
-                  <Text className="text-zinc-400 text-xs mt-1">
-                    {item.meta}
-                  </Text>
+                  <View className="flex-row items-center justify-between mt-1">
+                    <Text className="text-zinc-400 text-xs flex-1">
+                      {item.meta}
+                    </Text>
+                    <View className="flex-row items-center bg-indigo-600/15 px-2.5 py-1 rounded-full ml-2">
+                      <MapPin size={12} color="#818cf8" />
+                      <Text className="text-indigo-300 text-xs font-semibold ml-1">
+                        {formatDistance(distKm)}
+                      </Text>
+                    </View>
+                  </View>
                 </Pressable>
-              )}
+                );
+              }}
             />
           ) : (
             <View className="mx-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
@@ -472,7 +487,7 @@ export default function DiscoveryScreen() {
 
       <View className="absolute right-5" style={{ bottom: chatButtonBottom }}>
         <Pressable
-          onPress={() => router.push("/chat")}
+          onPress={() => router.push("/ai")}
           className="bg-indigo-600 w-16 h-16 rounded-full items-center justify-center shadow-xl border border-indigo-500/50"
         >
           <Bot color="#fff" size={28} />
