@@ -488,7 +488,7 @@ export default function DiscoveryScreen() {
 
       <View className="absolute right-5" style={{ bottom: chatButtonBottom }}>
         <Pressable
-          onPress={() => router.push("/chat")}
+          onPress={() => router.push("/ai")}
           className="bg-indigo-600 w-16 h-16 rounded-full items-center justify-center shadow-xl border border-indigo-500/50"
         >
           <Bot color="#fff" size={28} />

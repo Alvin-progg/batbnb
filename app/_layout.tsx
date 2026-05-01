@@ -111,7 +111,8 @@ export default function RootLayout() {
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="auth/callback" />
             <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="chat" />
+            <Stack.Screen name="ai" />
+            <Stack.Screen name="chat/[id]" />
             <Stack.Screen name="property/[id]" />
             <Stack.Screen name="listing/create" />
             <Stack.Screen
