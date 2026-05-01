@@ -324,9 +324,9 @@ export default function DiscoveryScreen() {
             }}
             onPress={() => router.push(`/property/${listing.id}` as any)}
           >
-            <View className="items-center overflow-visible">
-              <View className="bg-zinc-950 border border-zinc-700 px-4 py-1.5 rounded-xl shadow-md overflow-visible">
-                <Text className="text-zinc-100 font-bold text-sm tracking-tight mr-0.5">
+            <View style={{ alignItems: 'center', alignSelf: 'flex-start', padding: 4 }}>
+              <View className="bg-zinc-950 border border-zinc-500 px-3 py-1.5 rounded-xl shadow-lg">
+                <Text className="text-zinc-100 font-bold text-sm tracking-tight">
                   {formatPriceTag(listing.monthlyRent)}
                 </Text>
               </View>
@@ -334,14 +334,13 @@ export default function DiscoveryScreen() {
                 style={{
                   width: 0,
                   height: 0,
-                  backgroundColor: "transparent",
-                  borderStyle: "solid",
                   borderLeftWidth: 6,
                   borderRightWidth: 6,
                   borderTopWidth: 6,
                   borderLeftColor: "transparent",
                   borderRightColor: "transparent",
-                  borderTopColor: "#3f3f46", // Matches border-zinc-700 to look like a connected pin
+                  borderTopColor: "#71717a", // zinc-500 hex
+                  marginTop: -1,
                 }}
               />
             </View>
