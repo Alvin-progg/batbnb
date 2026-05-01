@@ -9,7 +9,6 @@ const genAI = new GoogleGenerativeAI(apiKey);
 
 export async function getEmbedding(text: string): Promise<number[]> {
   const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
-  // @ts-ignore – outputDimensionality is valid but missing from some type versions
   const result = await model.embedContent({
     content: { role: "user", parts: [{ text }] },
   });
@@ -25,12 +24,11 @@ export async function generateChatResponse(
     throw new Error("Missing EXPO_PUBLIC_GROQ_API_KEY in .env");
   }
 
-  // Clearly label each listing with its exact ID so the LLM has no excuse to guess
   const contextText =
     contextSnippets.length > 0
       ? contextSnippets
-          .map((s, i) => `--- LISTING ${i + 1} ---\n${s}`)
-          .join("\n\n")
+        .map((s, i) => `--- LISTING ${i + 1} ---\n${s}`)
+        .join("\n\n")
       : "No listings available.";
 
   const systemPrompt = `You are Donky, a friendly and helpful AI assistant for BatBnB — a student housing app for Batangas State University students. You help students find affordable housing, answer questions about renting, and give practical advice about student life in Batangas.
@@ -66,12 +64,12 @@ Be warm, concise, and helpful. You're talking to college students — keep it fr
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile", // Bigger model = better instruction following
+          model: "llama-3.3-70b-versatile",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: prompt },
           ],
-          temperature: 0.0, // Zero temp = deterministic, no creativity with IDs
+          temperature: 0.0,
         }),
       },
     );

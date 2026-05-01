@@ -16,6 +16,7 @@ import {
 
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/providers/auth-provider";
+import { ProximityCard } from "@/components/proximity-card";
 
 type ListingDetails = {
   id: string;
@@ -23,6 +24,8 @@ type ListingDetails = {
   subtitle: string;
   price: string;
   location: string;
+  latitude: number;
+  longitude: number;
   gallery: string[];
   comments: { id: string; author: string; text: string }[];
 };
@@ -49,7 +52,7 @@ export default function PropertyDetailsScreen() {
         .from("listings")
         .select(
           `
-        id, title, subtitle, monthly_rent, location,
+        id, title, subtitle, monthly_rent, location, latitude, longitude,
         listing_images ( id, image_url, sort_order ),
         listing_reviews ( id, author_label, review_text, created_at )
       `,
@@ -84,6 +87,8 @@ export default function PropertyDetailsScreen() {
           subtitle: listingData.subtitle || "",
           price: `₱${new Intl.NumberFormat("en-PH").format(listingData.monthly_rent)}/mo`,
           location: listingData.location,
+          latitude: listingData.latitude,
+          longitude: listingData.longitude,
           gallery: sortedImages,
           comments,
         });
@@ -177,6 +182,11 @@ export default function PropertyDetailsScreen() {
             {listing.price}
           </Text>
           <Text className="text-zinc-500 mt-1 text-sm">{listing.location}</Text>
+
+          <ProximityCard
+            listingLatitude={listing.latitude}
+            listingLongitude={listing.longitude}
+          />
         </View>
 
         <ScrollView

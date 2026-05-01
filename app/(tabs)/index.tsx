@@ -6,6 +6,7 @@ import {
     Bot,
     ChevronDown,
     ChevronUp,
+    MapPin,
     Search,
     SlidersHorizontal,
 } from "lucide-react-native";
@@ -25,6 +26,7 @@ import MapView, { Marker } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { supabase } from "@/lib/supabase";
+import { distanceToCampusKm, formatDistance } from "@/lib/distance";
 
 type Listing = {
   id: string;
@@ -424,7 +426,12 @@ export default function DiscoveryScreen() {
                 paddingHorizontal: 12,
                 paddingBottom: 12,
               }}
-              renderItem={({ item }) => (
+              renderItem={({ item }) => {
+                const distKm = distanceToCampusKm({
+                  latitude: item.latitude,
+                  longitude: item.longitude,
+                });
+                return (
                 <Pressable
                   onPress={() => router.push(`/property/${item.id}` as any)}
                   className="mb-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
@@ -443,11 +450,20 @@ export default function DiscoveryScreen() {
                   <Text className="text-zinc-200 mt-2 font-semibold">
                     {item.title}
                   </Text>
-                  <Text className="text-zinc-400 text-xs mt-1">
-                    {item.meta}
-                  </Text>
+                  <View className="flex-row items-center justify-between mt-1">
+                    <Text className="text-zinc-400 text-xs flex-1">
+                      {item.meta}
+                    </Text>
+                    <View className="flex-row items-center bg-indigo-600/15 px-2.5 py-1 rounded-full ml-2">
+                      <MapPin size={12} color="#818cf8" />
+                      <Text className="text-indigo-300 text-xs font-semibold ml-1">
+                        {formatDistance(distKm)}
+                      </Text>
+                    </View>
+                  </View>
                 </Pressable>
-              )}
+                );
+              }}
             />
           ) : (
             <View className="mx-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
