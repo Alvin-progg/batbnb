@@ -52,22 +52,39 @@ function AuthGate() {
   const { isLoading, session } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  const pathname = usePathname();
 
   React.useEffect(() => {
     if (isLoading) {
       return;
     }
 
-    const inAuthGroup = segments[0] === "(auth)";
+    if (__DEV__) {
+      // Helpful runtime debug information when developing locally
+      // eslint-disable-next-line no-console
+      console.log("[AuthGate] isLoading:", isLoading);
+      // eslint-disable-next-line no-console
+      console.log("[AuthGate] session:", session);
+      // eslint-disable-next-line no-console
+      console.log("[AuthGate] pathname:", pathname);
+      // eslint-disable-next-line no-console
+      console.log("[AuthGate] segments:", segments);
+    }
+
     const inOAuthCallbackRoute =
       segments[0] === "auth" && segments[1] === "callback";
 
-    if (!session && !inAuthGroup && !inOAuthCallbackRoute) {
-      router.replace("/(auth)/login");
+    const alreadyInAuthPath =
+      pathname.startsWith("/(auth)") ||
+      pathname === "/auth/callback" ||
+      pathname.startsWith("/auth/");
+
+    if (!session && !alreadyInAuthPath && !inOAuthCallbackRoute) {
+      router.replace("/(auth)/welcome");
       return;
     }
 
-    if (session && (inAuthGroup || inOAuthCallbackRoute)) {
+    if (session && alreadyInAuthPath) {
       router.replace("/");
     }
   }, [isLoading, router, segments, session]);
@@ -85,6 +102,21 @@ function AuthGate() {
 }
 
 export default function RootLayout() {
+  function DevForceWelcome() {
+    const router = useRouter();
+    const pathname = usePathname();
+
+    React.useEffect(() => {
+      if (!__DEV__) return;
+      // Only force when at the root to avoid disrupting other flows
+      if (pathname === "/" || pathname === "") {
+        router.replace("/(auth)/welcome");
+      }
+    }, [pathname, router]);
+
+    return null;
+  }
+
   return (
     <AuthProvider>
       <ThemeProvider value={DarkTheme}>
@@ -111,6 +143,7 @@ export default function RootLayout() {
             />
           </Stack>
           <AuthGate />
+          {__DEV__ ? <DevForceWelcome /> : null}
           <RouteLoadingOverlay />
           <StatusBar style="light" backgroundColor="#09090b" />
         </View>
