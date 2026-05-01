@@ -113,6 +113,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="chat" />
             <Stack.Screen name="property/[id]" />
+            <Stack.Screen name="listing/create" />
             <Stack.Screen
               name="modal"
               options={{
