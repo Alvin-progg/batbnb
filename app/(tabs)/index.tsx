@@ -324,9 +324,9 @@ export default function DiscoveryScreen() {
             }}
             onPress={() => router.push(`/property/${listing.id}` as any)}
           >
-            <View className="items-center">
-              <View className="bg-zinc-950 border border-zinc-700 px-3 py-1.5 rounded-xl shadow-md">
-                <Text className="text-zinc-100 font-bold text-sm tracking-tight">
+            <View className="items-center overflow-visible">
+              <View className="bg-zinc-950 border border-zinc-700 px-4 py-1.5 rounded-xl shadow-md overflow-visible">
+                <Text className="text-zinc-100 font-bold text-sm tracking-tight mr-0.5">
                   {formatPriceTag(listing.monthlyRent)}
                 </Text>
               </View>
