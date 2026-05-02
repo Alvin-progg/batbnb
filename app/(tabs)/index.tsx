@@ -2,31 +2,31 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import {
-    BedDouble,
-    Bot,
-    ChevronDown,
-    ChevronUp,
-    MapPin,
-    Search,
-    SlidersHorizontal,
+  BedDouble,
+  Bot,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Search,
+  SlidersHorizontal,
 } from "lucide-react-native";
 import React from "react";
 import {
-    Animated,
-    FlatList,
-    Modal,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-    useWindowDimensions,
+  Animated,
+  FlatList,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { supabase } from "@/lib/supabase";
 import { distanceToCampusKm, formatDistance } from "@/lib/distance";
+import { supabase } from "@/lib/supabase";
 
 type Listing = {
   id: string;
@@ -317,32 +317,71 @@ export default function DiscoveryScreen() {
       >
         {filteredListings.map((listing) => (
           <Marker
-            key={listing.id}
+            key={`${listing.id}-${listing.monthlyRent}`}
             coordinate={{
               latitude: listing.latitude,
               longitude: listing.longitude,
             }}
             onPress={() => router.push(`/property/${listing.id}` as any)}
+            tracksViewChanges={true}
+            anchor={{ x: 0.5, y: 1 }}
           >
-            <View style={{ alignItems: 'center', alignSelf: 'flex-start', padding: 4 }}>
-              <View className="bg-zinc-950 border border-zinc-500 px-3 py-1.5 rounded-xl shadow-lg">
-                <Text className="text-zinc-100 font-bold text-sm tracking-tight">
-                  {formatPriceTag(listing.monthlyRent)}
-                </Text>
-              </View>
-              <View
-                style={{
-                  width: 0,
-                  height: 0,
-                  borderLeftWidth: 6,
-                  borderRightWidth: 6,
-                  borderTopWidth: 6,
-                  borderLeftColor: "transparent",
-                  borderRightColor: "transparent",
-                  borderTopColor: "#71717a", // zinc-500 hex
-                  marginTop: -1,
+            {/* Safe Zone Wrapper: Forces the native map canvas to be wider than the bubble, completely eliminating border clipping */}
+            <View style={{ paddingHorizontal: 10, paddingBottom: 5, alignItems: 'center' }}>
+              
+              {/* OUTER VIEW: Acts as the "Border" (Gray) */}
+              <View 
+                style={{ 
+                  backgroundColor: '#a1a1aa', // Border color
+                  width: 70, 
+                  height: 30, 
+                  borderRadius: 10, 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  elevation: 4,
+                  marginBottom: 6, // Make room for absolute triangle
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 3,
                 }}
-              />
+              >
+                {/* INNER VIEW: Acts as the "Background" (Black) */}
+                <View style={{
+                  backgroundColor: '#09090b', // Background color
+                  width: 67, // Slightly smaller to reveal outer view
+                  height: 27,
+                  borderRadius: 8.5,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}>
+                  <Text 
+                    style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}
+                    numberOfLines={1}
+                  >
+                    {formatPriceTag(listing.monthlyRent)}
+                  </Text>
+                </View>
+                
+                {/* Triangle Tail - Absolutely Positioned relative to outer view */}
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: -6, 
+                    left: '50%',
+                    marginLeft: -6, 
+                    width: 0,
+                    height: 0,
+                    borderLeftWidth: 6,
+                    borderRightWidth: 6,
+                    borderTopWidth: 6,
+                    borderLeftColor: 'transparent',
+                    borderRightColor: 'transparent',
+                    borderTopColor: '#a1a1aa', // Triangle matches "border"
+                  }}
+                />
+              </View>
+
             </View>
           </Marker>
         ))}
