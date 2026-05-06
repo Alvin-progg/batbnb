@@ -3,6 +3,8 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import {
   BedDouble,
+  Bookmark,
+  BookmarkCheck,
   Bot,
   ChevronDown,
   ChevronUp,
@@ -27,6 +29,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { distanceToCampusKm, formatDistance } from "@/lib/distance";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/providers/auth-provider";
 
 type Listing = {
   id: string;
@@ -73,6 +76,7 @@ export default function DiscoveryScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { height: windowHeight } = useWindowDimensions();
   const router = useRouter();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isFilterModalVisible, setFilterModalVisible] = React.useState(false);
   const [minBudgetInput, setMinBudgetInput] = React.useState("");
@@ -83,6 +87,7 @@ export default function DiscoveryScreen() {
     React.useState(false);
   const [isDrawerExpanded, setDrawerExpanded] = React.useState(false);
   const [listings, setListings] = React.useState<Listing[]>([]);
+  const [savedIds, setSavedIds] = React.useState<Set<string>>(new Set());
   const drawerProgress = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -119,6 +124,39 @@ export default function DiscoveryScreen() {
       isMounted = false;
     };
   }, []);
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    const fetchSaved = async () => {
+      if (!user) {
+        if (isMounted) {
+          setSavedIds(new Set());
+        }
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("saved_listings")
+        .select("listing_id")
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Failed to load saved listings:", error);
+        return;
+      }
+
+      if (data && isMounted) {
+        setSavedIds(new Set(data.map((row) => row.listing_id)));
+      }
+    };
+
+    fetchSaved();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const drawerExpandedHeight = Math.min(
     420,
@@ -301,6 +339,46 @@ export default function DiscoveryScreen() {
     ? `Budget: ${filterSummary}`
     : "Tap to expand results";
 
+  const toggleSaved = React.useCallback(
+    async (listingId: string) => {
+      if (!user) {
+        return;
+      }
+
+      if (savedIds.has(listingId)) {
+        const { error } = await supabase
+          .from("saved_listings")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("listing_id", listingId);
+
+        if (error) {
+          console.error("Failed to remove saved listing:", error);
+          return;
+        }
+
+        setSavedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(listingId);
+          return next;
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("saved_listings")
+        .insert({ user_id: user.id, listing_id: listingId });
+
+      if (error) {
+        console.error("Failed to save listing:", error);
+        return;
+      }
+
+      setSavedIds((prev) => new Set(prev).add(listingId));
+    },
+    [savedIds, user],
+  );
+
   return (
     <View className="flex-1 bg-[#09090b]">
       <MapView
@@ -326,62 +404,74 @@ export default function DiscoveryScreen() {
             tracksViewChanges={true}
             anchor={{ x: 0.5, y: 1 }}
           >
-            {/* Safe Zone Wrapper: Forces the native map canvas to be wider than the bubble, completely eliminating border clipping */}
-            <View style={{ paddingHorizontal: 10, paddingBottom: 5, alignItems: 'center' }}>
-              
-              {/* OUTER VIEW: Acts as the "Border" (Gray) */}
-              <View 
-                style={{ 
-                  backgroundColor: '#a1a1aa', // Border color
-                  width: 70, 
-                  height: 30, 
-                  borderRadius: 10, 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
-                  elevation: 4,
-                  marginBottom: 6, // Make room for absolute triangle
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 3,
+            <View
+              collapsable={false}
+              style={{ alignItems: "center", overflow: "visible" }}
+            >
+              <View
+                style={{
+                  paddingHorizontal: 4,
+                  paddingBottom: 2,
+                  overflow: "visible",
+                  alignItems: "center",
                 }}
               >
-                {/* INNER VIEW: Acts as the "Background" (Black) */}
-                <View style={{
-                  backgroundColor: '#09090b', // Background color
-                  width: 67, // Slightly smaller to reveal outer view
-                  height: 27,
-                  borderRadius: 8.5,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}>
-                  <Text 
-                    style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}
-                    numberOfLines={1}
-                  >
-                    {formatPriceTag(listing.monthlyRent)}
-                  </Text>
-                </View>
-                
-                {/* Triangle Tail - Absolutely Positioned relative to outer view */}
                 <View
                   style={{
-                    position: 'absolute',
-                    bottom: -6, 
-                    left: '50%',
-                    marginLeft: -6, 
-                    width: 0,
-                    height: 0,
-                    borderLeftWidth: 6,
-                    borderRightWidth: 6,
-                    borderTopWidth: 6,
-                    borderLeftColor: 'transparent',
-                    borderRightColor: 'transparent',
-                    borderTopColor: '#a1a1aa', // Triangle matches "border"
+                    backgroundColor: "#a1a1aa",
+                    width: 70,
+                    height: 30,
+                    borderRadius: 10,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    elevation: 4,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 3,
                   }}
-                />
+                >
+                  <View
+                    style={{
+                      backgroundColor: "#09090b",
+                      width: 67,
+                      height: 27,
+                      borderRadius: 8.5,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#ffffff",
+                        fontWeight: "bold",
+                        fontSize: 13,
+                      }}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                    >
+                      {formatPriceTag(listing.monthlyRent)}
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      position: "absolute",
+                      bottom: -7,
+                      left: "50%",
+                      marginLeft: -7,
+                      width: 0,
+                      height: 0,
+                      borderLeftWidth: 7,
+                      borderRightWidth: 7,
+                      borderTopWidth: 7,
+                      borderLeftColor: "transparent",
+                      borderRightColor: "transparent",
+                      borderTopColor: "#a1a1aa",
+                    }}
+                  />
+                </View>
               </View>
-
             </View>
           </Marker>
         ))}
@@ -469,37 +559,48 @@ export default function DiscoveryScreen() {
                   latitude: item.latitude,
                   longitude: item.longitude,
                 });
+                const isSaved = savedIds.has(item.id);
                 return (
-                <Pressable
-                  onPress={() => router.push(`/property/${item.id}` as any)}
-                  className="mb-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
-                >
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-zinc-100 text-base font-bold">
-                      {formatPeso(item.monthlyRent)}
-                    </Text>
-                    <View className="flex-row items-center">
-                      <BedDouble size={16} color="#a1a1aa" />
-                      <Text className="text-zinc-400 text-xs ml-1">
-                        student-ready
+                  <Pressable
+                    onPress={() => router.push(`/property/${item.id}` as any)}
+                    className="mb-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-zinc-100 text-base font-bold">
+                        {formatPeso(item.monthlyRent)}
                       </Text>
+                      <View className="flex-row items-center">
+                        <BedDouble size={16} color="#a1a1aa" />
+                        <Text className="text-zinc-400 text-xs ml-1">
+                          student-ready
+                        </Text>
+                        <Pressable
+                          onPress={() => toggleSaved(item.id)}
+                          className="ml-3 rounded-full border border-zinc-800 bg-zinc-900 p-2"
+                        >
+                          {isSaved ? (
+                            <BookmarkCheck size={16} color="#818cf8" />
+                          ) : (
+                            <Bookmark size={16} color="#a1a1aa" />
+                          )}
+                        </Pressable>
+                      </View>
                     </View>
-                  </View>
-                  <Text className="text-zinc-200 mt-2 font-semibold">
-                    {item.title}
-                  </Text>
-                  <View className="flex-row items-center justify-between mt-1">
-                    <Text className="text-zinc-400 text-xs flex-1">
-                      {item.meta}
+                    <Text className="text-zinc-200 mt-2 font-semibold">
+                      {item.title}
                     </Text>
-                    <View className="flex-row items-center bg-indigo-600/15 px-2.5 py-1 rounded-full ml-2">
-                      <MapPin size={12} color="#818cf8" />
-                      <Text className="text-indigo-300 text-xs font-semibold ml-1">
-                        {formatDistance(distKm)}
+                    <View className="flex-row items-center justify-between mt-1">
+                      <Text className="text-zinc-400 text-xs flex-1">
+                        {item.meta}
                       </Text>
+                      <View className="flex-row items-center bg-indigo-600/15 px-2.5 py-1 rounded-full ml-2">
+                        <MapPin size={12} color="#818cf8" />
+                        <Text className="text-indigo-300 text-xs font-semibold ml-1">
+                          {formatDistance(distKm)}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                </Pressable>
+                  </Pressable>
                 );
               }}
             />

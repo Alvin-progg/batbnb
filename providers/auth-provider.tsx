@@ -8,6 +8,7 @@ type AuthContextValue = {
   session: Session | null;
   user: User | null;
   isOwner: boolean;
+  refreshOwnerStatus: () => Promise<void>;
   signOut: () => Promise<{ error: string | null }>;
 };
 
@@ -50,33 +51,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, []);
 
-  // Fetch is_owner from the users table when session changes
-  React.useEffect(() => {
+  const refreshOwnerStatus = React.useCallback(async () => {
     if (!session?.user?.id) {
       setIsOwner(false);
       return;
     }
 
+    const { data } = await supabase
+      .from("users")
+      .select("is_owner")
+      .eq("id", session.user.id)
+      .single();
+
+    if (data) {
+      setIsOwner(data.is_owner ?? false);
+    }
+  }, [session?.user?.id]);
+
+  // Fetch is_owner from the users table when session changes
+  React.useEffect(() => {
     let isMounted = true;
 
-    async function fetchOwnerStatus() {
-      const { data } = await supabase
-        .from("users")
-        .select("is_owner")
-        .eq("id", session!.user.id)
-        .single();
+    const load = async () => {
+      await refreshOwnerStatus();
+    };
 
-      if (isMounted && data) {
-        setIsOwner(data.is_owner ?? false);
-      }
+    if (isMounted) {
+      load();
     }
-
-    fetchOwnerStatus();
 
     return () => {
       isMounted = false;
     };
-  }, [session?.user?.id]);
+  }, [refreshOwnerStatus]);
 
   const signOut = React.useCallback(async () => {
     const { error } = await supabase.auth.signOut();
@@ -89,9 +96,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       session,
       user: session?.user ?? null,
       isOwner,
+      refreshOwnerStatus,
       signOut,
     }),
-    [isLoading, isOwner, session, signOut],
+    [isLoading, isOwner, refreshOwnerStatus, session, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,5 +1,11 @@
 import { Tabs } from "expo-router";
-import { Heart, LayoutDashboard, Map, MessageCircle } from "lucide-react-native";
+import {
+    Heart,
+    LayoutDashboard,
+    Map,
+    MessageCircle,
+    UserCircle,
+} from "lucide-react-native";
 import React from "react";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -74,6 +80,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="account"
+        options={{
+          title: "Account",
+          tabBarIcon: ({ color }) => (
+            <UserCircle size={24} color={color} strokeWidth={2.5} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="dashboard"
         options={{
           title: "Dashboard",
@@ -84,6 +99,5 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
-
   );
 }
